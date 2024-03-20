@@ -17,7 +17,7 @@ Support:
 
 ## Introduction
 
-Using eti est straightforward, simple usage look like this
+Using eti is straightforward, simple usage look like:
 ```
 #include <eti/eti.h>
 
@@ -57,7 +57,7 @@ struct Point
 
     static Point Mul(const Point& p0, const Point& p1)
     {
-        return { p0.X + p1.X, p0.Y + p1.Y };
+        return { p0.X * p1.X, p0.Y * p1.Y };
     }
 
     int X = 0;
