@@ -135,13 +135,13 @@
   <ItemGroup>
     <ClInclude Include="..\eti\eti.h" />
     <ClInclude Include="doctest.h" />
-    <ClInclude Include="doo.h" />
-    <ClInclude Include="foo.h" />
+    <ClInclude Include="forward\doo.h" />
+    <ClInclude Include="forward\foo.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="eti_playground.cpp" />
     <ClCompile Include="eti_unittest.cpp" />
-    <ClCompile Include="foo.cpp" />
+    <ClCompile Include="forward\foo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />

@@ -1,6 +1,6 @@
 #include "foo.h"
 
-#include "doctest.h"
+#include "../doctest.h"
 
 namespace forward_test
 {
