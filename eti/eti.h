@@ -20,7 +20,7 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 
-// eti v0.0.1
+// eti dev version from v0.0.1
 // 2024/03/19
 
 #pragma once
@@ -677,37 +677,37 @@ namespace eti
 
 #define ETI_PROPERTIES(...) __VA_ARGS__
 
-#define ETI_PROPERTY(NAME, ...) Property::Make<decltype(NAME)>(#NAME, offsetof(Self, NAME), std::move(Attribute::GetAttributes(__VA_ARGS__)) )
+#define ETI_PROPERTY(NAME, ...) ::eti::Property::Make<decltype(NAME)>(#NAME, offsetof(Self, NAME), std::move(::eti::Attribute::GetAttributes(__VA_ARGS__)) )
 
 #define ETI_PROPERTY_INTERNAL(...) \
-    static const std::span<Property> GetProperties() \
+    static const std::span<::eti::Property> GetProperties() \
     { \
-        static std::vector<Property> properties = { __VA_ARGS__ }; \
+        static std::vector<::eti::Property> properties = { __VA_ARGS__ }; \
         return properties; \
     }
 
 #define ETI_METHODS(...) __VA_ARGS__
 
 #define ETI_METHOD(NAME, ...) \
-    Method::Make(#NAME,  \
+    ::eti::Method::Make(#NAME,  \
     [](void* obj, void* _return, std::span<void*> args) \
     { \
-        CallFunction(&NAME, obj, _return, args); \
+        ::eti::CallFunction(&NAME, obj, _return, args); \
     }, \
     GetFunctionReturn(&NAME), \
     GetFunctionVariables(&NAME))
     
 #define ETI_METHOD_INTERNAL(...) \
-    static const std::span<Method> GetMethods() \
+    static const std::span<::eti::Method> GetMethods() \
     { \
-        static std::vector<Method> methods = { __VA_ARGS__ }; \
+        static std::vector<::eti::Method> methods = { __VA_ARGS__ }; \
         return methods; \
     }
 
 #define ETI_BASE(BASE, PROPERTIES, METHODS) \
     public: \
         using Self = BASE; \
-        virtual const Type& GetType() const { return GetTypeStatic(); } \
+        virtual const ::eti::Type& GetType() const { return GetTypeStatic(); } \
         ETI_TYPE_DECL_INTERNAL(BASE, nullptr, Kind::Class, PROPERTIES, METHODS) \
         ETI_PROPERTY_INTERNAL(PROPERTIES) \
         ETI_METHOD_INTERNAL(METHODS) \
@@ -720,8 +720,8 @@ namespace eti
     public: \
         using Self = CLASS; \
         using Super = BASE; \
-        const Type& GetType() const override { return GetTypeStatic(); }\
-        ETI_TYPE_DECL_INTERNAL(CLASS, &TypeOf<BASE>(), Kind::Class, PROPERTIES, METHODS) \
+        const ::eti::Type& GetType() const override { return GetTypeStatic(); }\
+        ETI_TYPE_DECL_INTERNAL(CLASS, &::eti::TypeOf<BASE>(), ::eti::Kind::Class, PROPERTIES, METHODS) \
         ETI_PROPERTY_INTERNAL(PROPERTIES) \
         ETI_METHOD_INTERNAL(METHODS) \
     private: 
@@ -731,15 +731,15 @@ namespace eti
 
 #define ETI_TYPE_DECL_INTERNAL(TYPE, PARENT, KIND, PROPERTIES, METHODS) \
     using Self = TYPE; \
-    static constexpr ::eti::TypeId TypeId = GetTypeId<TYPE>();\
-    static const Type& GetTypeStatic()  \
+    static constexpr ::eti::TypeId TypeId = ::eti::GetTypeId<TYPE>();\
+    static const ::eti::Type& GetTypeStatic()  \
     {  \
-        static Type type = Type::Make<TYPE>(KIND, PARENT, TYPE::GetProperties(), TYPE::GetMethods(), {}); \
+        static ::eti::Type type = ::eti::Type::Make<TYPE>(KIND, PARENT, TYPE::GetProperties(), TYPE::GetMethods(), {}); \
         return type; \
     } \
 
 #define ETI_STRUCT(STRUCT, PROPERTIES, METHODS) \
-    ETI_TYPE_DECL_INTERNAL(STRUCT, nullptr, Kind::Struct, PROPERTIES, METHODS) \
+    ETI_TYPE_DECL_INTERNAL(STRUCT, nullptr, ::eti::Kind::Struct, PROPERTIES, METHODS) \
     ETI_PROPERTY_INTERNAL(PROPERTIES) \
     ETI_METHOD_INTERNAL(METHODS)
 
@@ -752,9 +752,9 @@ namespace eti
         template<> \
         struct TypeOfImpl<TYPE> \
         { \
-            static const Type& GetTypeStatic() \
+            static const ::eti::Type& GetTypeStatic() \
             { \
-                static Type type = Type::Make<TYPE>(KIND, PARENT, PROPERTY_VARIABLES, {}, {}); \
+                static ::eti::Type type = ::eti::Type::Make<TYPE>(KIND, PARENT, PROPERTY_VARIABLES, {}, {}); \
                 return type; \
             } \
         }; \
@@ -762,7 +762,7 @@ namespace eti
 
 // use in global namespace
 #define ETI_POD(TYPE) \
-    ETI_TYPE_IMPL(TYPE, Kind::Pod, nullptr, {})
+    ETI_TYPE_IMPL(TYPE, ::eti::Kind::Pod, nullptr, {})
 
 #define ETI_TEMPLATE_1_IMPL(TYPE) \
     namespace eti \
@@ -772,7 +772,7 @@ namespace eti
         {  \
             static const Type& GetTypeStatic()  \
             {  \
-                static Type type = Type::Make<TYPE<T1>>(Kind::Template, nullptr, {}, {}, TypesOf<T1>());  \
+                static ::eti::Type type = ::eti::Type::Make<TYPE<T1>>(::eti::Kind::Template, nullptr, {}, {}, ::eti::TypesOf<T1>());  \
                 return type;  \
             } \
         }; \
@@ -785,10 +785,10 @@ namespace eti
         template<> \
         constexpr auto GetTypeNameImpl<RawType<T>>() \
         { \
-            return std::string_view(#NAME); \
+            return ::std::string_view(#NAME); \
         } \
     } \
-    ETI_TYPE_IMPL(T, Kind::Pod, nullptr, {})
+    ETI_TYPE_IMPL(T, ::eti::Kind::Pod, nullptr, {})
 
 
 #define ETI_TEMPLATE_2_IMPL(TYPE) \
@@ -797,9 +797,9 @@ namespace eti
         template<typename T1, typename T2> \
         struct TypeOfImpl<TYPE<T1, T2>>  \
         {  \
-            static const Type& GetTypeStatic()  \
+            static const ::eti::Type& GetTypeStatic()  \
             {  \
-                static Type type = Type::Make<TYPE<T1, T2>>(Kind::Template, nullptr, {}, {}, TypesOf<T1, T2>());  \
+                static ::eti::Type::eti:: type = ::eti::Type::Make<TYPE<T1, T2>>(::eti::Kind::Template, nullptr, {}, {}, ::eti::TypesOf<T1, T2>());  \
                 return type;  \
             } \
         }; \
@@ -853,7 +853,7 @@ namespace eti
     {
         for( const std::shared_ptr<Attribute>& a : Attributes  )
         {
-            if (IsA<T>(*a.get()))
+            if (IsA<T>(*a))
                 return Cast<T>(a.get());
         }
         return nullptr;
