@@ -83,6 +83,9 @@ namespace eti
     template<typename T>
     const Type& TypeOf();
 
+    template<typename T>
+    const Type& TypeOfForward();
+
     using TypeId = ETI_TYPE_ID_TYPE;
 
     // Raw Type
@@ -97,6 +100,26 @@ namespace eti
 
     template<typename T>
     using RawType = typename RawTypeImpl<T>::Type;
+
+    // IsCompleteType / IsForwardType
+
+    template<typename T, typename = std::void_t<>>
+    struct IsCompleteTypeImpl : std::false_type {};
+
+    template<typename T>
+    struct IsCompleteTypeImpl<T, std::void_t<decltype(sizeof(T))>> : std::true_type {};
+
+    template<typename T>
+    constexpr bool IsCompleteType = IsCompleteTypeImpl<T>::value;
+
+    template<typename T, typename = std::void_t<>>
+    struct IsForwardTypeImpl : std::true_type {};
+
+    template<typename T>
+    struct IsForwardTypeImpl<T, std::void_t<decltype(sizeof(T))>> : std::false_type {};
+
+    template<typename T>
+    constexpr bool IsForwardType = IsForwardTypeImpl<T>::value;
 
     // GetTypeName
     //  return const name for any given types
@@ -288,7 +311,8 @@ namespace eti
         Struct,     // ETI_STRUCT
         Pod,        // ETI_POD
         Template,   // ETI_TEMPLATE_X
-        Unknown     // automatic declared type, when user not supply it's own declaration
+        Unknown,    // automatic declared type, when user not supply it's own declaration
+        Forward     // forward type
     };
 
     // return compile time name for Kind
@@ -323,7 +347,7 @@ namespace eti
         {
             return
             {
-                TypeOf<T>(),
+                TypeOfForward<T>(),
                 std::is_pointer_v<T>,
                 std::is_const_v<T>,
             };
@@ -506,22 +530,44 @@ namespace eti
         {
             if constexpr (std::is_void<T>::value == false)
             {
-                return
+                if  constexpr (IsCompleteType<T>)
                 {
-                    GetTypeName<T>(),
-                    GetTypeId<T>(),
-                    kind,
-                    sizeof(T),
-                    alignof(T),
-                    parent,
-                    GetConstruct<T>(),
-                    GetCopyConstruct<T>(),
-                    GetMoveConstruct<T>(),
-                    GetDestruct<T>(), 
-                    properties,
-                    methods,
-                    templates
-                };
+                    return
+                    {
+                        GetTypeName<T>(),
+                        GetTypeId<T>(),
+                        kind,
+                        sizeof(T),
+                        alignof(T),
+                        parent,
+                        GetConstruct<T>(),
+                        GetCopyConstruct<T>(),
+                        GetMoveConstruct<T>(),
+                        GetDestruct<T>(),
+                        properties,
+                        methods,
+                        templates
+                    };
+                }
+                else
+                {
+                    return
+                    {
+                        GetTypeName<T>(),
+                        GetTypeId<T>(),
+                        Kind::Forward,
+                        0,
+                        0,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        {},
+                        {},
+                        {}
+                    };
+                }
             }
             else
             {
@@ -556,6 +602,19 @@ namespace eti
             return (it != Methods.end()) ? &(*it) : nullptr;
         }
     };
+
+    template<typename T>
+    Type __InternalGetType(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {})
+    {
+        static Type type = Type::Make<T>(kind, parent, properties, methods, templates);
+
+        // type may be Forward type, in this case update is on demand
+        if (type.Kind == Kind::Forward && IsCompleteType<T>)
+            type = Type::Make<T>(kind, parent, properties, methods, templates);
+
+        return type;
+    }
+
 
     //
     // TypesOf
@@ -603,7 +662,7 @@ namespace eti
 
     // use static const Type& T::GetTypeStatic(){...} if available
     template<typename T>
-    const Type& InnerGetType()
+    const Type& OwnerGetType()
     {
         if constexpr (HasStaticGetTypeStatic<T>::value)
             return T::GetTypeStatic();
@@ -614,13 +673,23 @@ namespace eti
     template<typename T>
     const Type& TypeOf()
     {
-        return InnerGetType<T>();
+        static_assert(IsCompleteType<T>, "Type must be completely declared, missing include ?");
+        return OwnerGetType<T>();
+    }
+
+    // TypeOfForward
+    //  allow get type on forward decl type, may return Kind == Forward
+    template<typename T>
+    const Type& TypeOfForward()
+    {
+        //static_assert(IsCompleteType<T>, "Type must be complete declared, missing include ?");
+        return OwnerGetType<T>();
     }
 
     template<typename... ARGS>
     std::span<const Type*> TypesOf()
     {
-        static const Type* types[] = { &TypeOf<ARGS>()... };
+        static const Type* types[] = { &TypeOfForward<ARGS>()... };
         return std::span<const Type*>(types, sizeof...(ARGS));
     }
 
@@ -641,12 +710,16 @@ namespace eti
     template<typename BASE, typename T>
     bool IsA(const T& instance)
     {
+        static_assert(IsCompleteType<BASE>, "Base type must be completely declared, missing include ?");
+        static_assert(IsCompleteType<T>, "Type must be completely declared, missing include ?");
         return IsA(instance.GetType(), TypeOf<BASE>());
     }
 
     template<typename T, typename BASE>
     constexpr bool IsATyped()
     {
+        static_assert(IsCompleteType<BASE>, "Base type must be completely declared, missing include ?");
+        static_assert(IsCompleteType<T>, "Type must be completely declared, missing include ?");
         return IsA(TypeOf<T>(), TypeOf<BASE>());
     }
 
@@ -655,6 +728,9 @@ namespace eti
     template<typename BASE, typename T>
     BASE* Cast(T* instance)
     {
+        static_assert(IsCompleteType<BASE>, "Base type must be completely declared, missing include ?");
+        static_assert(IsCompleteType<T>, "Type must be completely declared, missing include ?");
+
         if (instance == nullptr)
             return nullptr;
         if (IsA<BASE>(*instance))
@@ -665,11 +741,7 @@ namespace eti
     template<typename BASE, typename T>
     const BASE* Cast(const T* instance )
     {
-        if (instance == nullptr)
-            return nullptr;
-        if (IsA<BASE>(*instance))
-            return static_cast<const BASE*>(instance);
-        return nullptr;
+        return Cast<BASE, T>(const_cast<T>(instance));
     }
 }
 
@@ -677,7 +749,7 @@ namespace eti
 
 #define ETI_PROPERTIES(...) __VA_ARGS__
 
-#define ETI_PROPERTY(NAME, ...) ::eti::Property::Make<decltype(NAME)>(#NAME, offsetof(Self, NAME), std::move(::eti::Attribute::GetAttributes(__VA_ARGS__)) )
+#define ETI_PROPERTY(NAME, ...) ::eti::Property::Make<decltype(NAME)>(#NAME, offsetof(Self, NAME), ::eti::Attribute::GetAttributes(__VA_ARGS__))
 
 #define ETI_PROPERTY_INTERNAL(...) \
     static const std::span<::eti::Property> GetProperties() \
@@ -708,12 +780,12 @@ namespace eti
     public: \
         using Self = BASE; \
         virtual const ::eti::Type& GetType() const { return GetTypeStatic(); } \
-        ETI_TYPE_DECL_INTERNAL(BASE, nullptr, Kind::Class, PROPERTIES, METHODS) \
+        ETI_TYPE_DECL_INTERNAL(BASE, nullptr, ::eti::Kind::Class, PROPERTIES, METHODS) \
         ETI_PROPERTY_INTERNAL(PROPERTIES) \
         ETI_METHOD_INTERNAL(METHODS) \
     private:
 
-#define ETI_BASE_SLIM(CLASS, BASE) \
+#define ETI_BASE_SLIM(CLASS) \
     ETI_BASE(CLASS, ETI_PROPERTIES(), ETI_METHODS())
 
 #define ETI_CLASS(CLASS, BASE, PROPERTIES, METHODS) \
@@ -734,7 +806,7 @@ namespace eti
     static constexpr ::eti::TypeId TypeId = ::eti::GetTypeId<TYPE>();\
     static const ::eti::Type& GetTypeStatic()  \
     {  \
-        static ::eti::Type type = ::eti::Type::Make<TYPE>(KIND, PARENT, TYPE::GetProperties(), TYPE::GetMethods(), {}); \
+        static ::eti::Type type = ::eti::__InternalGetType<TYPE>(KIND, PARENT, TYPE::GetProperties(), TYPE::GetMethods(), {}); \
         return type; \
     } \
 
@@ -754,7 +826,7 @@ namespace eti
         { \
             static const ::eti::Type& GetTypeStatic() \
             { \
-                static ::eti::Type type = ::eti::Type::Make<TYPE>(KIND, PARENT, PROPERTY_VARIABLES, {}, {}); \
+                static ::eti::Type type = ::eti::__InternalGetType<TYPE>(KIND, PARENT, PROPERTY_VARIABLES, {}, {}); \
                 return type; \
             } \
         }; \
@@ -772,7 +844,7 @@ namespace eti
         {  \
             static const Type& GetTypeStatic()  \
             {  \
-                static ::eti::Type type = ::eti::Type::Make<TYPE<T1>>(::eti::Kind::Template, nullptr, {}, {}, ::eti::TypesOf<T1>());  \
+                static ::eti::Type type = ::eti::__InternalGetType<TYPE<T1>>(::eti::Kind::Template, nullptr, {}, {}, ::eti::TypesOf<T1>());  \
                 return type;  \
             } \
         }; \
@@ -799,7 +871,7 @@ namespace eti
         {  \
             static const ::eti::Type& GetTypeStatic()  \
             {  \
-                static ::eti::Type::eti:: type = ::eti::Type::Make<TYPE<T1, T2>>(::eti::Kind::Template, nullptr, {}, {}, ::eti::TypesOf<T1, T2>());  \
+                static ::eti::Type::eti:: type = ::eti::__InternalGetType<TYPE<T1, T2>>(::eti::Kind::Template, nullptr, {}, {}, ::eti::TypesOf<T1, T2>());  \
                 return type;  \
             } \
         }; \

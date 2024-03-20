@@ -3,12 +3,26 @@
   <ItemGroup>
     <ClInclude Include="doctest.h" />
     <ClInclude Include="..\eti\eti.h" />
+    <ClInclude Include="foo.h">
+      <Filter>forward</Filter>
+    </ClInclude>
+    <ClInclude Include="doo.h">
+      <Filter>forward</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="eti_unittest.cpp" />
     <ClCompile Include="eti_playground.cpp" />
+    <ClCompile Include="foo.cpp">
+      <Filter>forward</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="forward">
+      <UniqueIdentifier>{fc15c677-e7b5-43e9-bea4-a68af3541e8b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>
