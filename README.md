@@ -4,12 +4,10 @@ Efficient Type Information in c++
 Efficient rtti implementation that doesn't require c++ enable rtti. This lib is one header only without any external dependencies.
 
 Support:
-* IsA<T>()
-* Cast<T>()
-* New<T>()
-* NewCopy<T>(const T&)
-* Move<T>(const T& from, T& to)
-* pod (Plain Old Data)
+* IsA
+* Cast
+* New, NewCopy, Move and Delete
+* POD
 * Struct
 * Class
 * Properties
@@ -123,7 +121,6 @@ list of available config #define can be found  at beginning of <eti/eti.h> (see 
 ## Todo
 
 * Repository
-* Support external struct/class decl
-* Support enum
-* Remove all allocation in full mode
-
+* External struct/class decl
+* Enum
+* Interface
