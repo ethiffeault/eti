@@ -321,7 +321,7 @@ namespace test_06
             REQUIRE(foo1->ptrInt != nullptr);
             REQUIRE(*foo1->ptrInt == Foo::IntValue);
 
-            type.Move(foo1, foo2);
+            type.MoveConstruct(foo1, foo2);
 
             REQUIRE(foo1->ptrInt == nullptr);
             type.Destruct(foo1);
@@ -498,7 +498,7 @@ namespace test_10
         int i = 0;
     };
 
-    TEST_CASE("test_19")
+    TEST_CASE("test_09")
     {
         const Type& fooType = TypeOf<Foo>();
 
@@ -511,4 +511,96 @@ namespace test_10
         REQUIRE(property->GetAttribute<AccessAttribute>() != nullptr);
     }
 }
-#endif
+
+
+////////////////////////////////////////////////////////////////////////////////
+namespace test_11
+{
+
+    int construct = 0;
+    int copyConstruct = 0;
+    int moveConstruct = 0;
+    int destruct = 0;
+    void ResetCounters()
+    {
+        construct = 0;
+        copyConstruct = 0;
+        moveConstruct = 0;
+        destruct = 0;
+    }
+
+    struct Foo
+    {
+        ETI_STRUCT_SLIM(Foo)
+
+        static constexpr int IntValue = 1;
+
+        Foo()
+        {
+            ++construct;
+        }
+
+        Foo(const Foo& foo)
+        {
+            copyConstruct++;
+        }
+
+        Foo(Foo&& foo)
+        {
+            moveConstruct++;
+        }
+
+        ~Foo()
+        {
+            destruct++;
+        }
+
+        int Int = 123;
+    };
+
+    TEST_CASE("test_11")
+    {
+        const Type& fooType = TypeOf<Foo>();
+
+        {
+            ResetCounters();
+            REQUIRE(construct == 0);
+            REQUIRE(copyConstruct == 0);
+            REQUIRE(moveConstruct == 0);
+            REQUIRE(destruct == 0);
+
+            Foo* foo = fooType.New<Foo>();
+            REQUIRE(foo != nullptr);
+            REQUIRE(foo->Int == 123);
+            fooType.Delete(foo);
+
+            REQUIRE(construct == 1);
+            REQUIRE(copyConstruct == 0);
+            REQUIRE(moveConstruct == 0);
+            REQUIRE(destruct == 1);
+        }
+
+        {
+            ResetCounters();
+            
+            REQUIRE(construct == 0);
+            REQUIRE(copyConstruct == 0);
+            REQUIRE(moveConstruct == 0);
+            REQUIRE(destruct == 0);
+
+            {
+                Foo foo1;
+                foo1.Int = 321;
+                Foo* foo2 = fooType.NewCopy<Foo>(foo1);
+                fooType.Delete(foo2);
+            }
+
+            REQUIRE(construct == 1);
+            REQUIRE(copyConstruct == 1);
+            REQUIRE(moveConstruct == 0);
+            REQUIRE(destruct == 2);
+        }
+    }
+}
+
+#endif // #if !ETI_MINIMAL

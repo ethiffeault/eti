@@ -255,8 +255,7 @@ namespace eti
     {
         static void Call(RETURN(*func)(ARGS...), void* obj, void* ret, std::span<void*> args)
         {
-            ETI_ASSERT(sizeof...(ARGS) == args.size(), "invalid size of args");
-            ETI_ASSERT(obj == nullptr, "call static function should have obj to nullptr");
+            ETI_ASSERT(ret != nullptr, "call function that return void should have ret arg to nullptr");
             auto args_tuple = VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
             std::apply([&](auto... applyArgs) { *((RETURN*)ret) = func(*applyArgs...); }, args_tuple);
         }
@@ -268,8 +267,6 @@ namespace eti
     {
         static void Call(void(*func)(ARGS...), void* obj, void* ret, std::span<void*> args)
         {
-            ETI_ASSERT(sizeof...(ARGS) == args.size(), "invalid size of args");
-            ETI_ASSERT(obj == nullptr, "call static function should have obj to nullptr");
             ETI_ASSERT(ret == nullptr, "call function that return void should have ret arg to nullptr");
             auto args_tuple = VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
             std::apply([&](auto... applyArgs) { func(*applyArgs...); }, args_tuple);
@@ -282,6 +279,7 @@ namespace eti
     void CallFunction(RETURN(*func)(ARGS...), void* obj, void* ret, std::span<void*> args)
     {
         ETI_ASSERT(sizeof...(ARGS) == args.size(), "invalid size of args");
+        ETI_ASSERT(obj == nullptr, "call static function should have obj to nullptr");
         CallStaticFunctionImpl<RETURN, ARGS...>::Call(func, obj, ret, args);
     }
 
@@ -293,8 +291,6 @@ namespace eti
     {
         static void Call(RETURN(OBJECT::* func)(ARGS...), void* obj, void* ret, std::span<void*> args)
         {
-            ETI_ASSERT(sizeof...(ARGS) == args.size(), "invalid size of args");
-            ETI_ASSERT(obj != nullptr, "internal error");
             ETI_ASSERT(ret != nullptr, "internal error");
             auto args_tuple = VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
             std::apply([&](auto... applyArgs) { *((RETURN*)ret) = ((OBJECT*)obj->*func)(*applyArgs...); }, args_tuple);
@@ -308,8 +304,6 @@ namespace eti
     {
         static void Call(void(OBJECT::* func)(ARGS...), void* obj, void* ret, std::span<void*> args)
         {
-            ETI_ASSERT(sizeof...(ARGS) == args.size(), "invalid size of args");
-            ETI_ASSERT(obj != nullptr, "internal error");
             ETI_ASSERT(ret == nullptr, "internal error");
             auto args_tuple = VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
             std::apply([&](auto... applyArgs) { ((OBJECT*)obj->*func)(*applyArgs...); }, args_tuple);
@@ -321,6 +315,7 @@ namespace eti
     void CallFunction(RETURN(OBJECT::* func)(ARGS...), void* obj, void* ret, std::span<void*> args)
     {
         ETI_ASSERT(sizeof...(ARGS) == args.size(), "invalid size of args");
+        ETI_ASSERT(obj != nullptr, "internal error");
         CallMemberFunctionImpl<OBJECT, RETURN, ARGS...>::Call(func, obj, ret, args);
     }
 
@@ -459,29 +454,38 @@ namespace eti
     {
         Variable Variable;
         size_t Offset;
+        TypeId PropertyId = 0;
         std::vector<std::shared_ptr<Attribute>> Attributes;
+        
 
         template <typename T>
-        static Property Make(std::string_view Name, size_t offset, std::vector<std::shared_ptr<Attribute>>&& attributes = {})
+        static Property Make(std::string_view name, size_t offset, std::vector<std::shared_ptr<Attribute>>&& attributes = {})
         {
             return
             {
-                ::eti::Variable::Make(Name, ::eti::Declaration::Make<T>()),
+                ::eti::Variable::Make(name, ::eti::Declaration::Make<T>()),
                 offset,
+                GetStringHash(name),
                 std::move(attributes)
             };
         }
 
         template <typename T>
         const T* GetAttribute() const;
+
+        template <typename T>
+        const T* HaveAttribute() const
+        {
+            return GetAttribute<T>() != nullptr;
+        }
     };
 
     // method of class/struct
     struct Method
     {
         std::string_view Name;
+        TypeId MethodId = 0;
         std::function<void(void*, void*, std::span<void*>)> Function;
-        Access Access;
         const Variable* Return;
         std::span<const Variable> Arguments;
 
@@ -490,11 +494,25 @@ namespace eti
             return
             {
                 name,
+                GetStringHash(name),
                 function,
-                ::eti::Access::Unknown, // todo
                 _return,
                 arguments,
+                // todo: attributes
             };
+        }
+
+        template <typename T>
+        const T* GetAttribute() const
+        {
+            // not implemented
+            return nullptr;
+        }
+
+        template <typename T>
+        const T* HaveAttribute() const
+        {
+            return GetAttribute<T>() != nullptr;
         }
     };
 
@@ -511,7 +529,7 @@ namespace eti
         const Type* Parent = nullptr;
         std::function<void(void* /* dst */)> Construct;
         std::function<void(void* /* src */, void* /* dst */)> CopyConstruct;
-        std::function<void(void* /* src */, void* /* dst */)> Move;
+        std::function<void(void* /* src */, void* /* dst */)> MoveConstruct;
         std::function<void(void* /* dst */)> Destruct;
 
 #if !ETI_MINIMAL
@@ -692,14 +710,71 @@ namespace eti
             return (it != Properties.end()) ? &(*it) : nullptr;
         }
 
+        const Property* GetProperty(TypeId propertyId) const
+        {
+            auto it = std::ranges::find_if(Properties, [propertyId](const Property& it) { return it.PropertyId == propertyId; });
+            return (it != Properties.end()) ? &(*it) : nullptr;
+        }
+
         const Method* GetMethod(std::string_view name) const
         {
             auto it = std::ranges::find_if(Methods, [name](const Method& it) { return it.Name == name; });
             return (it != Methods.end()) ? &(*it) : nullptr;
         }
 
+        const Method* GetMethod(TypeId methodId) const
+        {
+            auto it = std::ranges::find_if(Methods, [methodId](const Method& it) { return it.MethodId == methodId; });
+            return (it != Methods.end()) ? &(*it) : nullptr;
+        }
+
     #endif
 
+        bool HaveConstruct() const { return Construct != nullptr; }
+        bool HaveCopyConstruct() const { return CopyConstruct != nullptr; }
+        bool HaveMove() const { return MoveConstruct != nullptr; }
+        bool HaveDestroy() const { return Destruct != nullptr; }
+
+        template<typename T>
+        T* New() const
+        {
+            ETI_ASSERT(IsA(TypeOf<T>(), *this), "try to call Type::New with non compatible type");
+            ETI_ASSERT(HaveConstruct(), "try to call Type::New on Type without Construct");
+            void* memory = _aligned_malloc(Size, Align);
+            ETI_ASSERT(memory, "out of memory on Type::New call");
+            Construct(memory);
+            return static_cast<T*>(memory);
+        }
+
+        template<typename T>
+        T* NewCopy(const T& other) const
+        {
+            ETI_ASSERT(IsA(TypeOf<T>(), *this), "try to call Type::New with non compatible type");
+            ETI_ASSERT(HaveCopyConstruct(), "try to call Type::New on Type without Construct");
+            void* memory = _aligned_malloc(Size, Align);
+            ETI_ASSERT(memory, "out of memory on Type::New call");
+            CopyConstruct((void*) & other, memory);
+            return static_cast<T*>(memory);
+        }
+
+        template<typename T>
+        void Delete(T* ptr) const
+        {
+            ETI_ASSERT(IsA(TypeOf<T>(), *this), "try to call Type::Delete with non compatible type");
+            ETI_ASSERT(HaveDestroy(), "try to call Type::Delete on Type without Destroy");
+            // support null delete
+            if (ptr == nullptr)
+                return;
+            Destruct(ptr);
+        }
+
+        template<typename FROM, typename TO>
+        void Move(FROM& from, TO& to) const
+        {
+            ETI_ASSERT(TypeOf<FROM>().Id == TypeOf<TO>().Id, "Move should be call using same type");
+            ETI_ASSERT(HaveMove(), "try to call Type::Move on Type without MoveConstruct");
+            MoveConstruct(&from, &to);
+        }
     };
 
 #if !ETI_MINIMAL
