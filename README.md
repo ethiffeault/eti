@@ -124,3 +124,7 @@ list of available config #define can be found  at beginning of <eti/eti.h> (see 
 * External struct/class decl
 * Enum
 * Interface
+
+## External
+
+eti use doctest for unittests: https://github.com/doctest/doctest 
