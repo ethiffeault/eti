@@ -1,7 +1,7 @@
 # eti
 Efficient Type Information in c++ 
 
-Efficient rtti implementation that doesn't require c++ enable rtti. This lib is one header only without any external dependancies.
+Efficient rtti implementation that doesn't require c++ enable rtti. This lib is one header only without any external dependencies.
 
 Support:
 * IsA<T>()
@@ -89,7 +89,7 @@ void main()
 To enable Repository use config : 
 * #define ETI_REPOSITORY 1
 
-Repository contain type mapping from TypeId to Type and from Name to Type. Usefull for stuff like serialization.
+Repository contain type mapping from TypeId to Type and from Name to Type. Practical for stuff like serialization...
 
 todo: more doc...
 
@@ -97,7 +97,7 @@ todo: more doc...
 
 Support slim mode when only basic type information are needed (no properties, no functions, no attributes, ...)
 
-Availble in slime mode: 
+Available in slime mode: 
 * TypeOf<T>()
 * IsA<T>()
 * Cast<T>()
