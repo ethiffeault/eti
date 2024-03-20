@@ -31,8 +31,8 @@
 
 // Configuration overriding
 //
-//  1. set ETI_CONFIG_HEADER to 1 to use external header
-//  2. or define override before include eti.h
+//  1. set ETI_CONFIG_HEADER to 1 to use external header : "eti_config.h"
+//  2. or define override before include <eti/eti.h>
 //
 #define ETI_CONFIG_HEADER 0
 
@@ -43,7 +43,7 @@
 #else
 
     // Minimal
-    //  when minimal is 1, only IsA<>, dynamic Cast<> and factory functions are available (no properties, no functions, no attributes, ...)
+    //  when ETI_SLIM_MODE is 1, only IsA<>, dynamic Cast<> and factory functions are available (no properties, no functions, no attributes, ...)
     #ifndef ETI_SLIM_MODE
         #define ETI_SLIM_MODE 0
     #endif
@@ -125,7 +125,7 @@ namespace eti
     template<typename T>
     using RawType = typename RawTypeImpl<T>::Type;
 
-    // IsCompleteType / IsForwardType
+    // IsCompleteType
 
     template<typename T, typename = std::void_t<>>
     struct IsCompleteTypeImpl : std::false_type {};
@@ -136,6 +136,7 @@ namespace eti
     template<typename T>
     constexpr bool IsCompleteType = IsCompleteTypeImpl<T>::value;
 
+    // IsForwardType
     template<typename T, typename = std::void_t<>>
     struct IsForwardTypeImpl : std::true_type {};
 
@@ -144,6 +145,27 @@ namespace eti
 
     template<typename T>
     constexpr bool IsForwardType = IsForwardTypeImpl<T>::value;
+
+    // IsMethodStatic
+    template<typename T>
+    struct IsMethodStaticImpl :  std::false_type {};
+
+    template<typename RETURN, typename... ARGS>
+    struct IsMethodStaticImpl< RETURN(*)(ARGS...) > : std::true_type {};
+
+    template<typename T>
+    constexpr bool IsMethodStatic = IsMethodStaticImpl<T>::value;
+
+    // IsMethodConst
+    template<typename T>
+    struct IsMethodConstImpl :  std::false_type {};
+
+    template<typename OBJECT, typename RETURN, typename... ARGS>
+    struct IsMethodConstImpl< RETURN(OBJECT::*)(ARGS...) const > : std::true_type {};
+
+    template<typename T>
+    constexpr bool IsMethodConst = IsMethodConstImpl<T>::value;
+
 
     // GetTypeName
     //  return const name for any given types
@@ -485,16 +507,20 @@ namespace eti
     {
         std::string_view Name;
         TypeId MethodId = 0;
+        bool IsStatic = false;
+        bool IsConst = false;
         std::function<void(void*, void*, std::span<void*>)> Function;
         const Variable* Return;
         std::span<const Variable> Arguments;
 
-        static Method Make(std::string_view name, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return = nullptr, std::span<const Variable> arguments = {})
+        static Method Make(std::string_view name, bool isStatic, bool isConst, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return = nullptr, std::span<const Variable> arguments = {})
         {
             return
             {
                 name,
                 GetStringHash(name),
+                isStatic,
+                isConst,
                 function,
                 _return,
                 arguments,
@@ -513,6 +539,12 @@ namespace eti
         const T* HaveAttribute() const
         {
             return GetAttribute<T>() != nullptr;
+        }
+
+        template <typename OWNER, typename RETURN, typename... ARGS>
+        void Call(OWNER& owner, RETURN* ret, ARGS... args)
+        {
+            
         }
     };
 
@@ -783,7 +815,6 @@ namespace eti
     Type __InternalGetType(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {})
     {
         static Type type = Type::Make<T>(kind, parent, properties, methods, templates);
-
         // type may be Forward type, in this case update is on demand
         if (type.Kind == Kind::Forward && IsCompleteType<T>)
             type = Type::Make<T>(kind, parent, properties, methods, templates);
@@ -952,7 +983,9 @@ namespace eti
 #define ETI_METHODS(...) __VA_ARGS__
 
 #define ETI_METHOD(NAME, ...) \
-    ::eti::Method::Make(#NAME,  \
+    ::eti::Method::Make(#NAME, \
+    ::eti::IsMethodStatic<decltype(&Self::NAME)>, \
+    ::eti::IsMethodConst<decltype(&Self::NAME)>, \
     [](void* obj, void* _return, std::span<void*> args) \
     { \
         ::eti::CallFunction(&NAME, obj, _return, args); \
@@ -1021,12 +1054,19 @@ namespace eti
 
 #if !ETI_SLIM_MODE
 
+    // use init pattern to prevent infinite recursion (like in method with Self* as arguments)
     #define ETI_TYPE_DECL_INTERNAL(TYPE, PARENT, KIND, PROPERTIES, METHODS) \
     using Self = TYPE; \
     static constexpr ::eti::TypeId TypeId = ::eti::GetTypeId<TYPE>();\
     static const ::eti::Type& GetTypeStatic()  \
     {  \
-        static ::eti::Type type = ::eti::__InternalGetType<TYPE>(KIND, PARENT, TYPE::GetProperties(), TYPE::GetMethods(), {}); \
+        static bool initializing = false; \
+        static ::eti::Type type; \
+        if (initializing == false) \
+        { \
+            initializing = true; \
+            type = ::eti::__InternalGetType<TYPE>(KIND, PARENT, TYPE::GetProperties(), TYPE::GetMethods(), {}); \
+        } \
         return type; \
     }
 

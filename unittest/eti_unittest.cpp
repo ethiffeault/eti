@@ -603,18 +603,40 @@ namespace test_11
     }
 }
 
+namespace test_12
+{
+
+    struct Foo
+    {
+        void MemberFunction(){}
+        static void StaticFunction(){}
+    };
+
+
+    TEST_CASE("test_09")
+    {
+        constexpr bool isMemberFunctionStatic = IsMethodStatic<decltype(&Foo::MemberFunction)>;
+        constexpr bool isStaticFunctionStatic = IsMethodStatic<decltype(&Foo::StaticFunction)>;
+
+        static_assert(isMemberFunctionStatic == false);
+        static_assert(isStaticFunctionStatic == true);
+
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 namespace doc_introduction
 {
+    using namespace eti;
 
     struct Point
     {
         ETI_STRUCT(
             Point, 
-            ETI_PROPERTIES( ETI_PROPERTY(X), ETI_PROPERTY(Y) ), 
-            ETI_METHODS( ETI_METHOD(Mul) ))
+            ETI_PROPERTIES( ETI_PROPERTY(X), ETI_PROPERTY(Y)),
+            ETI_METHODS( ETI_METHOD(Mul)))
 
-        Point Mul(const Point& p0, const Point& p1)
+        static Point Mul(const Point& p0, const Point& p1)
         {
             return { p0.X + p1.X, p0.Y + p1.Y };
         }
@@ -623,11 +645,23 @@ namespace doc_introduction
         int Y = 0;
     };
 
-
-
     TEST_CASE("doc_introduction")
     {
         const Type& type = TypeOf<Point>();
+        //const Property* xProperty = type.GetProperty("X");
+        //const Property* yProperty = type.GetProperty("Y");
+        //const Method* mul = type.GetMethod("Mul");
+
+        //Point p1{ 1, 1 };
+        //Point p2{ 2, 2 };
+
+        //Point result;
+        //std::vector args;
+        //mul->Function(nullptr, &result, { &p1, &p2 });
+
+    
+
+
     }
 }
 
