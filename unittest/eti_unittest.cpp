@@ -24,6 +24,8 @@
 #include "doctest.h"
 #include <eti/eti.h>
 
+#if !ETI_MINIMAL
+
 using namespace eti;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -509,3 +511,4 @@ namespace test_10
         REQUIRE(property->GetAttribute<AccessAttribute>() != nullptr);
     }
 }
+#endif

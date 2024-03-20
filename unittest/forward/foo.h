@@ -2,6 +2,8 @@
 
 #include <eti/eti.h>
 
+#if !ETI_MINIMAL
+
 namespace forward_test
 {
     using namespace eti;
@@ -29,3 +31,5 @@ namespace forward_test
     };
 
 }
+
+#endif

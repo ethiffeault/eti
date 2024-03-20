@@ -42,6 +42,12 @@
 
 #else
 
+    // Minimal
+    //  when minimal is 1, only IsA<>, dynamic Cast<> and factory functions are available (no properties, no functions, no attributes, ...)
+    #ifndef ETI_MINIMAL
+        #define ETI_MINIMAL 0
+    #endif
+
     #ifndef ETI_ASSERT
         // Assert and Error
         #include <cassert>
@@ -333,6 +339,8 @@ namespace eti
         Forward     // forward type
     };
 
+#if !ETI_MINIMAL
+
     // return compile time name for Kind
     static constexpr std::string_view GetKindName(Kind typeDesc)
     {
@@ -490,6 +498,8 @@ namespace eti
         }
     };
 
+#endif
+
     // Type, eti core type, represent runtime type info about <T>
     struct Type
     {
@@ -503,9 +513,14 @@ namespace eti
         std::function<void(void* /* src */, void* /* dst */)> CopyConstruct;
         std::function<void(void* /* src */, void* /* dst */)> Move;
         std::function<void(void* /* dst */)> Destruct;
+
+#if !ETI_MINIMAL
+
         std::span<const Property> Properties;
         std::span<const Method> Methods;
         std::span<const Type*> Templates;
+
+#endif
 
         bool operator==(const Type& other) const { return Id == other.Id; }
         bool operator!=(const Type& other) const { return !(*this == other); }
@@ -542,6 +557,8 @@ namespace eti
         {
             return [](void* dst) { ((T*)dst)->~T(); };
         }
+
+#if !ETI_MINIMAL
 
         template<typename T>
         static const Type Make(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {})
@@ -608,6 +625,67 @@ namespace eti
             }
         }
 
+#else // !ETI_MINIMAL
+
+        template<typename T>
+        static const Type Make(::eti::Kind kind, const Type* parent)
+        {
+            if constexpr (std::is_void<T>::value == false)
+            {
+                if  constexpr (IsCompleteType<T>)
+                {
+                    return
+                    {
+                        GetTypeName<T>(),
+                        GetTypeId<T>(),
+                        kind,
+                        sizeof(T),
+                        alignof(T),
+                        parent,
+                        GetConstruct<T>(),
+                        GetCopyConstruct<T>(),
+                        GetMoveConstruct<T>(),
+                        GetDestruct<T>(),
+                    };
+                }
+                else
+                {
+                    return
+                    {
+                        GetTypeName<T>(),
+                        GetTypeId<T>(),
+                        Kind::Forward,
+                        0,
+                        0,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                    };
+                }
+            }
+            else
+            {
+                return
+                {
+                    "void",
+                    0,
+                    Kind::Void,
+                    0,
+                    0,
+                    nullptr,
+                    nullptr,
+                    nullptr,
+                    nullptr,
+                    nullptr,
+                };
+            }
+        }
+    #endif // #if !ETI_MINIMAL
+
+    #if !ETI_MINIMAL
+
         const Property* GetProperty(std::string_view name) const
         {
             auto it = std::ranges::find_if(Properties, [name](const Property& it) { return it.Variable.Name == name; });
@@ -619,7 +697,12 @@ namespace eti
             auto it = std::ranges::find_if(Methods, [name](const Method& it) { return it.Name == name; });
             return (it != Methods.end()) ? &(*it) : nullptr;
         }
+
+    #endif
+
     };
+
+#if !ETI_MINIMAL
 
     template<typename T>
     Type __InternalGetType(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {})
@@ -633,6 +716,21 @@ namespace eti
         return type;
     }
 
+#else
+
+    template<typename T>
+    Type __InternalGetType(::eti::Kind kind, const Type* parent)
+    {
+        static Type type = Type::Make<T>(kind, parent);
+
+        // type may be Forward type, in this case update is on demand
+        if (type.Kind == Kind::Forward && IsCompleteType<T>)
+            type = Type::Make<T>(kind, parent);
+
+        return type;
+    }
+
+#endif // #if !ETI_MINIMAL
 
     //
     // TypesOf
@@ -794,6 +892,8 @@ namespace eti
         return methods; \
     }
 
+#if !ETI_MINIMAL
+
 #define ETI_BASE(BASE, PROPERTIES, METHODS) \
     public: \
         using Self = BASE; \
@@ -805,6 +905,21 @@ namespace eti
 
 #define ETI_BASE_SLIM(CLASS) \
     ETI_BASE(CLASS, ETI_PROPERTIES(), ETI_METHODS())
+
+#else // #if !ETI_MINIMAL
+
+#define ETI_BASE(BASE) \
+    public: \
+        using Self = BASE; \
+        virtual const ::eti::Type& GetType() const { return GetTypeStatic(); } \
+        ETI_TYPE_DECL_INTERNAL(BASE, nullptr, ::eti::Kind::Class) \
+    private:
+
+#define ETI_BASE_SLIM(CLASS) \
+    ETI_BASE(CLASS, ETI_PROPERTIES())
+#endif // #if !ETI_MINIMAL
+
+#if !ETI_MINIMAL
 
 #define ETI_CLASS(CLASS, BASE, PROPERTIES, METHODS) \
     public: \
@@ -819,14 +934,45 @@ namespace eti
 #define ETI_CLASS_SLIM(CLASS, BASE) \
     ETI_CLASS(CLASS, BASE, ETI_PROPERTIES(), ETI_METHODS())
 
-#define ETI_TYPE_DECL_INTERNAL(TYPE, PARENT, KIND, PROPERTIES, METHODS) \
+#else // #if !ETI_MINIMAL
+
+#define ETI_CLASS(CLASS, BASE) \
+    public: \
+        using Self = CLASS; \
+        using Super = BASE; \
+        const ::eti::Type& GetType() const override { return GetTypeStatic(); }\
+        ETI_TYPE_DECL_INTERNAL(CLASS, &::eti::TypeOf<BASE>(), ::eti::Kind::Class) \
+    private: 
+#define ETI_CLASS_SLIM(CLASS, BASE) \
+    ETI_CLASS(CLASS, BASE)
+
+#endif // #if !ETI_MINIMAL
+
+#if !ETI_MINIMAL
+
+    #define ETI_TYPE_DECL_INTERNAL(TYPE, PARENT, KIND, PROPERTIES, METHODS) \
     using Self = TYPE; \
     static constexpr ::eti::TypeId TypeId = ::eti::GetTypeId<TYPE>();\
     static const ::eti::Type& GetTypeStatic()  \
     {  \
         static ::eti::Type type = ::eti::__InternalGetType<TYPE>(KIND, PARENT, TYPE::GetProperties(), TYPE::GetMethods(), {}); \
         return type; \
-    } \
+    }
+
+#else // #if !ETI_MINIMAL
+
+    #define ETI_TYPE_DECL_INTERNAL(TYPE, PARENT, KIND) \
+    using Self = TYPE; \
+    static constexpr ::eti::TypeId TypeId = ::eti::GetTypeId<TYPE>();\
+    static const ::eti::Type& GetTypeStatic()  \
+    {  \
+        static ::eti::Type type = ::eti::__InternalGetType<TYPE>(KIND, PARENT); \
+        return type; \
+    }
+
+#endif // #if !ETI_MINIMAL
+
+#if !ETI_MINIMAL
 
 #define ETI_STRUCT(STRUCT, PROPERTIES, METHODS) \
     ETI_TYPE_DECL_INTERNAL(STRUCT, nullptr, ::eti::Kind::Struct, PROPERTIES, METHODS) \
@@ -850,9 +996,44 @@ namespace eti
         }; \
     }
 
+#else // #if !ETI_MINIMAL
+
+#define ETI_STRUCT(STRUCT) \
+    ETI_TYPE_DECL_INTERNAL(STRUCT, nullptr, ::eti::Kind::Struct) \
+    ETI_PROPERTY_INTERNAL(PROPERTIES) \
+    ETI_METHOD_INTERNAL(METHODS)
+
+#define ETI_STRUCT_SLIM(STRUCT) \
+    ETI_STRUCT(STRUCT)
+
+#define ETI_TYPE_IMPL(TYPE, KIND, PARENT) \
+    namespace eti \
+    { \
+        template<> \
+        struct TypeOfImpl<TYPE> \
+        { \
+            static const ::eti::Type& GetTypeStatic() \
+            { \
+                static ::eti::Type type = ::eti::__InternalGetType<TYPE>(KIND, PARENT); \
+                return type; \
+            } \
+        }; \
+    }
+#endif // #if !ETI_MINIMAL
+
 // use in global namespace
+
+#if !ETI_MINIMAL
+
 #define ETI_POD(TYPE) \
     ETI_TYPE_IMPL(TYPE, ::eti::Kind::Pod, nullptr, {})
+
+#else // #if !ETI_MINIMAL
+
+#define ETI_POD(TYPE) \
+    ETI_TYPE_IMPL(TYPE, ::eti::Kind::Pod, nullptr)
+
+#endif // #if !ETI_MINIMAL
 
 #define ETI_TEMPLATE_1_IMPL(TYPE) \
     namespace eti \
@@ -869,6 +1050,9 @@ namespace eti
     }
 
 // use in global namespace
+
+#if !ETI_MINIMAL
+
 #define ETI_NAMED_POD(T, NAME) \
     namespace eti \
     { \
@@ -880,6 +1064,20 @@ namespace eti
     } \
     ETI_TYPE_IMPL(T, ::eti::Kind::Pod, nullptr, {})
 
+#else // #if !ETI_MINIMAL
+
+#define ETI_NAMED_POD(T, NAME) \
+    namespace eti \
+    { \
+        template<> \
+        constexpr auto GetTypeNameImpl<RawType<T>>() \
+        { \
+            return ::std::string_view(#NAME); \
+        } \
+    } \
+    ETI_TYPE_IMPL(T, ::eti::Kind::Pod, nullptr)
+
+#endif // #if !ETI_MINIMAL
 
 #define ETI_TEMPLATE_2_IMPL(TYPE) \
     namespace eti \
@@ -922,6 +1120,9 @@ namespace eti
 //    }; 
 //}
 
+#if !ETI_MINIMAL
+
+// Attribute
 namespace eti
 {
     class Attribute
@@ -948,8 +1149,9 @@ namespace eti
         }
         return nullptr;
     }
-
 }
+
+#endif // #if !ETI_MINIMAL
 
 #if ETI_TRIVIAL_POD
 

@@ -1,5 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <unittest/doctest.h>
+
+#define ETI_MINIMAL 1
 #include <eti/eti.h>
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -23,5 +25,56 @@ namespace minimal_test_01
         const Type& type = TypeOf<Point>();
         REQUIRE(type.Name == "Point");
         REQUIRE(type.Size == sizeof(Point));
+    }
+
+    class Object
+    {
+        ETI_BASE(Object)
+    public:
+        virtual ~Object(){}
+        int x = 0;
+    };
+
+    class Foo : public Object
+    {
+        ETI_CLASS(Foo, Object)
+    public:
+        ~Foo() override{}
+        int i = 0;
+        int j = 0;
+    };
+
+    class Doo : public Object
+    {
+        ETI_CLASS(Doo, Object)
+    public:
+        ~Doo() override{}
+        int i = 0;
+    };
+
+    TEST_CASE("minimal_test_02")
+    {
+        Foo foo;
+        Doo doo;
+
+        REQUIRE(IsA<Object>(foo));
+        REQUIRE(IsA<Object>(doo));
+        REQUIRE(IsA<Foo>(foo));
+        REQUIRE(!IsA<Foo>(doo));
+        REQUIRE(IsA<Doo>(doo));
+        REQUIRE(!IsA<Doo>(foo));
+
+        REQUIRE(TypeOf<Object>().Size == sizeof(Object));
+        REQUIRE(TypeOf<Foo>().Size == sizeof(Foo));
+        REQUIRE(TypeOf<Doo>().Size == sizeof(Doo));
+
+        REQUIRE(TypeOf<Object>().Align == alignof(Object));
+        REQUIRE(TypeOf<Foo>().Align == alignof(Foo));
+        REQUIRE(TypeOf<Doo>().Align == alignof(Doo));
+
+        REQUIRE(TypeOf<Object>().Name == "class minimal_test_01::Object");
+        REQUIRE(TypeOf<Foo>().Name == "class minimal_test_01::Foo");
+        REQUIRE(TypeOf<Doo>().Name == "class minimal_test_01::Doo");
+
     }
 }

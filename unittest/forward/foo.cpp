@@ -2,6 +2,8 @@
 
 #include "../doctest.h"
 
+#if !ETI_MINIMAL
+
 namespace forward_test
 {
     TEST_CASE("forward_test")
@@ -14,3 +16,4 @@ namespace forward_test
         REQUIRE(fooDooType.Kind == Kind::Forward);
     }
 }
+#endif

@@ -2,6 +2,8 @@
 
 #include <eti/eti.h>
 
+
+#if !ETI_MINIMAL
 namespace forward_test
 {
     struct Doo
@@ -11,3 +13,4 @@ namespace forward_test
         virtual ~Doo(){}
     };
 }
+#endif
