@@ -29,7 +29,11 @@
 #include <string_view>
 #include <span>
 
-// Toggle to use external config header
+// Configuration overriding
+//
+//  1. set ETI_CONFIG_HEADER to 1 to use external header
+//  2. or define override before include eti.h
+//
 #define ETI_CONFIG_HEADER 0
 
 #if ETI_CONFIG_HEADER
@@ -38,41 +42,55 @@
 
 #else
 
-    // Assert and Error
-    #include <cassert>
-    #include <memory>
-    #define ETI_ASSERT(cond, msg) assert(cond)
-    #define ETI_ERROR(msg) assert(true)
-    #define ETI_INTERNAL_ASSERT(cond, msg) assert(cond)
-    #define ETI_INTERNAL_ERROR(msg) assert(true)
+    #ifndef ETI_ASSERT
+        // Assert and Error
+        #include <cassert>
+        #include <memory>
+        #define ETI_ASSERT(cond, msg) assert(cond)
+        #define ETI_ERROR(msg) assert(true)
+        #define ETI_INTERNAL_ASSERT(cond, msg) assert(cond)
+        #define ETI_INTERNAL_ERROR(msg) assert(true)
+    #endif
 
     // TypeId/Hashing
-    #define ETI_TYPE_ID_TYPE std::uint64_t
-    #define ETI_HASH_FUNCTION ::eti::HashFNV1WithPrime          
-    #define ETI_HASH_SEED 0xCBF29CE484222325ull
+    #ifndef ETI_TYPE_ID_TYPE
+        #define ETI_TYPE_ID_TYPE std::uint64_t
+    #endif
 
-    // Function Type Name
-    #define ETI_TYPE_NAME_FUNCTION ::eti::GetTypeNameHashImpl
+    #ifndef ETI_HASH_FUNCTION
+        #define ETI_HASH_FUNCTION ::eti::HashFNV1WithPrime
+        //#define ETI_HASH_FUNCTION ::eti::HashFNV1
+        #define ETI_HASH_SEED 0xCBF29CE484222325ull
+    #endif
+        
+    #ifndef ETI_TYPE_NAME_FUNCTION
+        // Function Type Name
+        #define ETI_TYPE_NAME_FUNCTION ::eti::GetTypeNameHashImpl
+    #endif
 
-    // Define basic pod Type in global scope with convenient name :
-    //  bool, u8, u16, u32, u64, s8, s16, s32, s64, f32 and f64
-    #define ETI_TRIVIAL_POD 1
+    #ifndef ETI_TRIVIAL_POD
+        // Define basic pod Type in global scope with convenient name :
+        //  bool, u8, u16, u32, u64, s8, s16, s32, s64, f32 and f64
+        #define ETI_TRIVIAL_POD 1
+    #endif
 
-    // Enable Repository
-    //
-    //  All type will self register so it's possible to make at runtime:
-    //      const Type* type = Repository::GetType(fooId);
-    //      const Type* type = Repository::GetType("Foo");
-    //
-    // For stuff like serialization...
-    //
-    // need a #define in one cpp file to work: ETI_REPOSITORY_IMPL()
-    #define ETI_REPOSITORY 1
+    #ifndef ETI_REPOSITORY
+        // Enable Repository
+        //
+        //  All type will self register so it's possible to make at runtime:
+        //      const Type* type = Repository::GetType(fooId);
+        //      const Type* type = Repository::GetType("Foo");
+        //
+        // For stuff like serialization...
+        //
+        // need a #define in one cpp file to work: ETI_REPOSITORY_IMPL()
+        #define ETI_REPOSITORY 1
 
-    // If ETI_REPOSITORY == 1 and in dynamic library, export symbol using this.
-    #define ETI_REPOSITORY_API
+        // If ETI_REPOSITORY == 1 and in dynamic library, export symbol using this.
+        #define ETI_REPOSITORY_API
+    #endif
 
-#endif
+#endif // ETI_CONFIG_HEADER
 
 namespace eti
 {
@@ -95,7 +113,7 @@ namespace eti
     template<typename T>
     struct RawTypeImpl
     {
-        using Type =  std::decay_t<std::remove_pointer_t<T>>;
+        using Type = std::decay_t<std::remove_pointer_t<T>>;
     };
 
     template<typename T>
@@ -143,13 +161,13 @@ namespace eti
         return value;
     }
 #else
-    #pragma error implement type name
+#pragma error implement type name
 #endif
 
     template<typename T>
     constexpr auto GetTypeNameImpl()
     {
-        return ETI_TYPE_NAME_FUNCTION<T>   ();
+        return ETI_TYPE_NAME_FUNCTION<T>();
     }
 
     template<typename T>
@@ -164,7 +182,7 @@ namespace eti
     {
         std::uint64_t prime = 0x100000001B3ull;
 
-        for (char c : str) 
+        for (char c : str)
         {
             hash ^= static_cast<TypeId>(c);
             hash *= prime;
@@ -210,7 +228,7 @@ namespace eti
             using PtrType = std::remove_reference_t<T>*;
             return *static_cast<PtrType>(ptr);
         }
-        else 
+        else
         {
             return *static_cast<T*>(ptr);
         }
@@ -267,7 +285,7 @@ namespace eti
     template<typename OBJECT, typename RETURN, typename... ARGS>
     struct CallMemberFunctionImpl
     {
-        static void Call(RETURN(OBJECT::*func)(ARGS...), void* obj, void* ret, std::span<void*> args )
+        static void Call(RETURN(OBJECT::* func)(ARGS...), void* obj, void* ret, std::span<void*> args)
         {
             ETI_ASSERT(sizeof...(ARGS) == args.size(), "invalid size of args");
             ETI_ASSERT(obj != nullptr, "internal error");
@@ -282,7 +300,7 @@ namespace eti
     template<typename OBJECT, typename... ARGS>
     struct CallMemberFunctionImpl<OBJECT, void, ARGS...>
     {
-        static void Call(void(OBJECT::*func)(ARGS...), void* obj, void* ret, std::span<void*> args)
+        static void Call(void(OBJECT::* func)(ARGS...), void* obj, void* ret, std::span<void*> args)
         {
             ETI_ASSERT(sizeof...(ARGS) == args.size(), "invalid size of args");
             ETI_ASSERT(obj != nullptr, "internal error");
@@ -294,7 +312,7 @@ namespace eti
 
     // member function call switch
     template<typename OBJECT, typename RETURN, typename... ARGS>
-    void CallFunction( RETURN(OBJECT::*func)(ARGS...), void* obj, void* ret, std::span<void*> args)
+    void CallFunction(RETURN(OBJECT::* func)(ARGS...), void* obj, void* ret, std::span<void*> args)
     {
         ETI_ASSERT(sizeof...(ARGS) == args.size(), "invalid size of args");
         CallMemberFunctionImpl<OBJECT, RETURN, ARGS...>::Call(func, obj, ret, args);
@@ -392,7 +410,7 @@ namespace eti
     std::span<Variable> GetVariables()
     {
         // note: name not supported yet (maybe in c++ 34?)
-        static std::vector<Variable> variables = { Variable::Make("", Declaration::Make<ARGS>())...};
+        static std::vector<Variable> variables = { Variable::Make("", Declaration::Make<ARGS>())... };
         return variables;
     }
 
@@ -407,7 +425,7 @@ namespace eti
 
     // member
     template<typename OBJECT, typename RETURN, typename... ARGS>
-    const Variable* GetFunctionReturn(RETURN(OBJECT::*func)(ARGS...))
+    const Variable* GetFunctionReturn(RETURN(OBJECT::* func)(ARGS...))
     {
         return GetVariable<RETURN>("");
     }
@@ -421,7 +439,7 @@ namespace eti
 
     // member
     template<typename OBJECT, typename RETURN, typename... ARGS>
-    std::span<Variable> GetFunctionVariables(RETURN(OBJECT::*func)(ARGS...))
+    std::span<Variable> GetFunctionVariables(RETURN(OBJECT::* func)(ARGS...))
     {
         return GetVariables<ARGS...>();
     }
@@ -592,13 +610,13 @@ namespace eti
 
         const Property* GetProperty(std::string_view name) const
         {
-            auto it = std::ranges::find_if(Properties, [name](const Property& it)  { return it.Variable.Name == name; });
+            auto it = std::ranges::find_if(Properties, [name](const Property& it) { return it.Variable.Name == name; });
             return (it != Properties.end()) ? &(*it) : nullptr;
         }
 
         const Method* GetMethod(std::string_view name) const
         {
-            auto it = std::ranges::find_if(Methods, [name](const Method& it)  { return it.Name == name; });
+            auto it = std::ranges::find_if(Methods, [name](const Method& it) { return it.Name == name; });
             return (it != Methods.end()) ? &(*it) : nullptr;
         }
     };
@@ -739,7 +757,7 @@ namespace eti
     }
 
     template<typename BASE, typename T>
-    const BASE* Cast(const T* instance )
+    const BASE* Cast(const T* instance)
     {
         return Cast<BASE, T>(const_cast<T>(instance));
     }
@@ -768,7 +786,7 @@ namespace eti
     }, \
     GetFunctionReturn(&NAME), \
     GetFunctionVariables(&NAME))
-    
+
 #define ETI_METHOD_INTERNAL(...) \
     static const std::span<::eti::Method> GetMethods() \
     { \
@@ -910,8 +928,8 @@ namespace eti
     {
         ETI_BASE(Attribute, ETI_PROPERTIES(), ETI_METHODS())
     public:
-        Attribute(){}
-        virtual ~Attribute(){}
+        Attribute() {}
+        virtual ~Attribute() {}
 
         template<typename... ARGS>
         static std::vector<std::shared_ptr<Attribute>> GetAttributes(ARGS... args)
@@ -923,7 +941,7 @@ namespace eti
     template <typename T>
     const T* Property::GetAttribute() const
     {
-        for( const std::shared_ptr<Attribute>& a : Attributes  )
+        for (const std::shared_ptr<Attribute>& a : Attributes)
         {
             if (IsA<T>(*a))
                 return Cast<T>(a.get());
