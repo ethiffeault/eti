@@ -603,4 +603,32 @@ namespace test_11
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+namespace doc_introduction
+{
+
+    struct Point
+    {
+        ETI_STRUCT(
+            Point, 
+            ETI_PROPERTIES( ETI_PROPERTY(X), ETI_PROPERTY(Y) ), 
+            ETI_METHODS( ETI_METHOD(Mul) ))
+
+        Point Mul(const Point& p0, const Point& p1)
+        {
+            return { p0.X + p1.X, p0.Y + p1.Y };
+        }
+
+        int X = 0;
+        int Y = 0;
+    };
+
+
+
+    TEST_CASE("doc_introduction")
+    {
+        const Type& type = TypeOf<Point>();
+    }
+}
+
 #endif // #if !ETI_SLIM_MODE
