@@ -24,7 +24,7 @@
 #include "doctest.h"
 #include <eti/eti.h>
 
-#if !ETI_MINIMAL
+#if !ETI_SLIM_MODE
 
 using namespace eti;
 
@@ -603,4 +603,4 @@ namespace test_11
     }
 }
 
-#endif // #if !ETI_MINIMAL
+#endif // #if !ETI_SLIM_MODE

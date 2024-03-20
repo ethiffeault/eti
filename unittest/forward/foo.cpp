@@ -2,7 +2,7 @@
 
 #include "../doctest.h"
 
-#if !ETI_MINIMAL
+#if !ETI_SLIM_MODE
 
 namespace forward_test
 {

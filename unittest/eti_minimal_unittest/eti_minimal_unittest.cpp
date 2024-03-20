@@ -1,7 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <unittest/doctest.h>
 
-#define ETI_MINIMAL 1
+#define ETI_SLIM_MODE 1
 #include <eti/eti.h>
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -29,7 +29,7 @@ namespace minimal_test_01
 
     class Object
     {
-        ETI_BASE(Object)
+        ETI_BASE_SLIM(Object)
     public:
         virtual ~Object(){}
         int x = 0;
@@ -37,7 +37,7 @@ namespace minimal_test_01
 
     class Foo : public Object
     {
-        ETI_CLASS(Foo, Object)
+        ETI_CLASS_SLIM(Foo, Object)
     public:
         ~Foo() override{}
         int i = 0;
@@ -46,7 +46,7 @@ namespace minimal_test_01
 
     class Doo : public Object
     {
-        ETI_CLASS(Doo, Object)
+        ETI_CLASS_SLIM(Doo, Object)
     public:
         ~Doo() override{}
         int i = 0;
