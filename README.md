@@ -86,7 +86,7 @@ void main()
 ## Attributes (on types, properties and methods)
 ## Repository
 
-To enable Repositort use config : 
+To enable Repository use config : 
 * #define ETI_REPOSITORY 1
 
 Repository contain type mapping from TypeId to Type and from Name to Type. Usefull for stuff like serialization.
@@ -111,13 +111,14 @@ Availble in slime mode:
 
 To change default behavior this lib provide 2 ways, one is to declare #define before include, one it's to provide your own config file.
 
-* #define before include
-    simply define what you need
-* config file
-    #define ETI_CONFIG_HEADER 1 
-    create a eti_config.h
+* #define before include:
+define what you need before #include <eti/eti.h>
 
-list of config #define are at beginning of <eti/eti.h>
+* config file:
+#define ETI_CONFIG_HEADER 1 in <eti/eti.h>
+create a eti_config.h using config defines
+
+list of available config #define can be found  at beginning of <eti/eti.h> (see comment for documentation)
 
 ## Todo
 
