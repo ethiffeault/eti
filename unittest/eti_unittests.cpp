@@ -475,35 +475,12 @@ namespace test_09
 ////////////////////////////////////////////////////////////////////////////////
 namespace test_10
 {
-    // class/struct access
-    enum class Access : std::uint8_t
-    {
-        Private,
-        Protected,
-        Public,
-        Unknown
-    };
-
-    class AccessAttribute : public eti::Attribute
-    {
-        ETI_CLASS_SLIM(AccessAttribute, Attribute)
-
-    public:
-
-        AccessAttribute(Access access)
-        {
-            Access = access;
-        }
-
-        Access Access = Access::Unknown;
-    };
-
     struct Foo
     {
         ETI_STRUCT(Foo,
             ETI_PROPERTIES
             (
-                ETI_PROPERTY(i, AccessAttribute(Access::Private) ),
+                ETI_PROPERTY(i, Accessibility(Access::Private) ),
             ),
             ETI_METHODS()
         )
@@ -519,9 +496,9 @@ namespace test_10
         REQUIRE(property != nullptr);
 
         REQUIRE(property->Attributes.size() == 1);
-        REQUIRE(IsA<AccessAttribute>(*property->Attributes[0]));
+        REQUIRE(IsA<Accessibility>(*property->Attributes[0]));
 
-        REQUIRE(property->GetAttribute<AccessAttribute>() != nullptr);
+        REQUIRE(property->GetAttribute<Accessibility>() != nullptr);
     }
 }
 

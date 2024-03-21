@@ -123,6 +123,47 @@ void main()
 ## Struct
 ## Class
 ## Properties
+Property is a way to access any member variables and may contain custom attributes.
+Member can be private and protected.
+Support attributes.
+```
+    class Person
+    {
+        ETI_BASE(
+            Person,
+            ETI_PROPERTIES
+            (
+                ETI_PROPERTY(Age, Accessibility(Access::Private)) // optional Accessibility attribute, can be any user defined attributes
+            ),
+            ETI_METHODS())
+    public:
+        virtual ~Person(){}
+        int GetAge() const { return Age; }
+    private:
+        int Age = 0;
+    };
+
+    void main()
+    {
+        Person person;
+        const Property* ageProperty = TypeOf<Person>().GetProperty("Age");
+
+        int age;
+        ageProperty->Get(person, age);
+        cout << "Init age is " << age << endl;
+
+        ageProperty->Set(person, 21);
+        ageProperty->Get(person, age);
+        cout << "Adult age is " << age << endl;
+
+        cout << "Person::Age member is " << GetAccessName(ageProperty->GetAttribute<Accessibility>()->Access) << endl;
+    }
+    // output
+    //  Init age is 0
+    //  Adult age is 21
+    //  Person::Age member is private
+```
+
 ## Methods (member and static)
 ## Attributes (on types, properties and methods)
 ## Repository

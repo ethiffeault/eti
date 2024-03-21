@@ -29,6 +29,7 @@
 #if !ETI_SLIM_MODE
 
 using namespace eti;
+using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 namespace doc_introduction
@@ -102,3 +103,46 @@ namespace doc_introduction
 }
 
 #endif // #if !ETI_SLIM_MODE
+
+
+////////////////////////////////////////////////////////////////////////////////
+namespace doc_properties
+{
+    using namespace eti;
+
+    class Person
+    {
+        ETI_BASE(
+            Person,
+            ETI_PROPERTIES
+            (
+                ETI_PROPERTY(Age, Accessibility(Access::Private)) // optional Accessibility attribute, can be any user defined attributes
+            ),
+            ETI_METHODS())
+    public:
+        virtual ~Person(){}
+        int GetAge() const { return Age; }
+    private:
+        int Age = 0;
+    };
+
+    TEST_CASE("doc_properties")
+    {
+        Person person;
+        const Property* ageProperty = TypeOf<Person>().GetProperty("Age");
+
+        int age;
+        ageProperty->Get(person, age);
+        cout << "Init age is " << age << endl;
+
+        ageProperty->Set(person, 21);
+        ageProperty->Get(person, age);
+        cout << "Adult age is " << age << endl;
+
+        cout << "Person::Age member is " << GetAccessName(ageProperty->GetAttribute<Accessibility>()->Access) << endl;
+    }
+    // output
+    //  Init age is 0
+    //  Adult age is 21
+    //  Person::Age member is private
+}

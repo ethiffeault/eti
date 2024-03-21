@@ -1337,7 +1337,7 @@ namespace eti
 
 #pragma endregion
 
-#pragma region Attribute
+#pragma region Attributes
 
     // Attribute decl and impl at the end, sinec it's using type information
     class Attribute
@@ -1367,6 +1367,45 @@ namespace eti
         }
         return nullptr;
     }
+
+    // class/struct access
+    enum class Access : std::uint8_t
+    {
+        Private,
+        Protected,
+        Public,
+        Unknown
+    };
+
+    inline constexpr std::string_view GetAccessName(Access access)
+    {
+        switch (access)
+        {
+            case Access::Private:
+                return "private";
+            case Access::Protected:
+                return "protected";
+            case Access::Public:
+                return "public";
+            case Access::Unknown:
+                return "unknown";
+        }
+    }
+
+    class Accessibility : public eti::Attribute
+    {
+        ETI_CLASS_SLIM(Accessibility, Attribute)
+
+    public:
+
+        Accessibility(Access access)
+        {
+            Access = access;
+        }
+
+        Access Access = Access::Unknown;
+    };
+
 
 #pragma endregion
 
