@@ -388,7 +388,7 @@ namespace eti
 
 #pragma endregion
 
-#pragma region Internal forwards
+#pragma region Internal
 
     //internal forwards
     namespace internal
@@ -452,6 +452,8 @@ namespace eti
     }
 
 #pragma endregion
+
+#pragma region ETI
 
     // GetTypeName
     //  return constexpr name for any given types
@@ -667,6 +669,9 @@ namespace eti
 
     template<typename BASE, typename T>
     const BASE* Cast(const T* instance);
+
+#pragma endregion
+
 }
 
 #pragma region Macros
@@ -843,11 +848,10 @@ namespace eti
 
 #pragma endregion
 
-
-// ETI Impl
 namespace eti
 {
-#pragma region internal impl
+
+#pragma region Internal Implementation
 
     namespace internal
     {
@@ -1048,7 +1052,7 @@ namespace eti
 
 #pragma endregion
 
-#pragma region Property Impl
+#pragma region Property Implementation
 
     template <typename T>
     const T* Property::HaveAttribute() const
@@ -1076,7 +1080,7 @@ namespace eti
 
 #pragma endregion
 
-#pragma region Method Impl
+#pragma region Method Implementation
 
     template <typename T>
     const T* Method::GetAttribute() const
@@ -1131,7 +1135,7 @@ namespace eti
 
 #pragma endregion
 
-#pragma region Attribute Impl
+#pragma region Attribute Implementation
 
     inline const Property* Type::GetProperty(std::string_view name) const
     {
@@ -1200,7 +1204,7 @@ namespace eti
 
 #pragma endregion
 
-#pragma region eti impl
+#pragma region ETI Implementation
 
     // default impl of TypeOfImpl::GetTypeStatic(), should be specialized
     // undeclared type (not using ETI_* macro automatically fallback here as Kind::Unknown type
