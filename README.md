@@ -200,15 +200,19 @@ wip
 Attribute are supported on Struct, Class, Properties ans Methods
 
 * Struct
+
   wip
 
 * Class
+
   wip
 
 * Properties
+
   base class: eti::PropertyAttribute
 
 * Methods
+
   wip
 
 
