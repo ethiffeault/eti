@@ -123,9 +123,25 @@ void main()
 ## Struct
 ## Class
 ## Properties
-Property is a way to access any member variables and may contain custom attributes.
-Member can be private and protected.
-Support attributes.
+Property
+* Access to member variables (public, protected and private)
+* Pointer or value.
+* Support Attributes.
+* Set/Get using reflexion via eti::Property.
+
+```
+    Property
+    {
+        Name;
+        Type;
+        Offset;
+        Parent;
+        PropertyId;
+        Attributes;
+    }
+```
+ex:
+
 ```
     class Person
     {
@@ -133,7 +149,8 @@ Support attributes.
             Person,
             ETI_PROPERTIES
             (
-                ETI_PROPERTY(Age, Accessibility(Access::Private)) // optional Accessibility attribute, can be any user defined attributes
+                // optional Accessibility attribute, can also be user defined... see Attributes
+                ETI_PROPERTY(Age, Accessibility(Access::Private))
             ),
             ETI_METHODS())
     public:
@@ -143,25 +160,28 @@ Support attributes.
         int Age = 0;
     };
 
-    void main()
+    TEST_CASE("doc_properties")
     {
         Person person;
         const Property* ageProperty = TypeOf<Person>().GetProperty("Age");
 
         int age;
         ageProperty->Get(person, age);
-        cout << "Init age is " << age << endl;
+        cout << "Initial Age is " << age << endl;
 
         ageProperty->Set(person, 21);
         ageProperty->Get(person, age);
-        cout << "Adult age is " << age << endl;
+        cout << "Adult Age is " << age << endl;
 
-        cout << "Person::Age member is " << GetAccessName(ageProperty->GetAttribute<Accessibility>()->Access) << endl;
+        cout << "Person::Age member is "
+        << GetAccessName(ageProperty->GetAttribute<Accessibility>()->Access)
+        << " of type : " << ageProperty->Variable.Declaration.Type.Name
+        << endl;
     }
     // output
-    //  Init age is 0
-    //  Adult age is 21
-    //  Person::Age member is private
+    //  Init Age is 0
+    //  Adult Age is 21
+    //  Person::Age member is private of type : i32
 ```
 
 ## Methods (member and static)
