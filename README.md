@@ -41,11 +41,11 @@ void main()
     Foo foo;
     Doo doo;
 
-    // output: For is Object ? true
-    std::count << "For is Object ? " << (IsA<Object>(foo) ? "true" : "false");   
+    // output: Foo is a Object ? true
+    std::count << "Foo is a Object ? " << ( IsA<Object>(foo) ? "true" : "false" );
 
-    // output: Doo is Foo ? false
-    std::count << "Doo is Foo ? " << (IsA<Foo>(doo) ? "true" : "false");
+    // output: Doo is a Foo ? false
+    std::count << "Doo is a Foo ? " << ( IsA<Foo>(doo) ? "true" : "false" );
 }
 ```
 more complex:
