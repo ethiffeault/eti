@@ -64,14 +64,14 @@
     #endif
 
     #ifndef ETI_HASH_FUNCTION
-        #define ETI_HASH_FUNCTION ::eti::HashFNV1WithPrime
         //#define ETI_HASH_FUNCTION ::eti::HashFNV1
+        #define ETI_HASH_FUNCTION ::eti::HashFNV1WithPrime
         #define ETI_HASH_SEED 0xCBF29CE484222325ull
     #endif
         
     #ifndef ETI_TYPE_NAME_FUNCTION
         // Function Type Name
-        #define ETI_TYPE_NAME_FUNCTION ::eti::GetTypeNameHashImpl
+        #define ETI_TYPE_NAME_FUNCTION ::eti::GetTypeNameDefault
     #endif
 
     #ifndef ETI_TRIVIAL_POD
@@ -98,6 +98,14 @@
 
 #endif // ETI_CONFIG_HEADER
 
+
+#define ETI_FULL_MODE !ETI_SLIM_MODE
+
+// todo: implement slim mode
+#if ETI_SLIM_MODE
+    #error "slim mode not implemented yet"
+#endif
+
 namespace eti
 {
     // Forward types
@@ -112,10 +120,8 @@ namespace eti
 
     using TypeId = ETI_TYPE_ID_TYPE;
 
-    #if ETI_SLIM_MODE
-        #error "slim mode not implemented yet"
-    #endif
 
+    // Utils
 
     // Raw Type
     //  from any type whit any modifier (const, const*, *, ...) return raw type T
@@ -171,13 +177,12 @@ namespace eti
     template<typename T>
     constexpr bool IsMethodConst = IsMethodConstImpl<T>::value;
 
-
     // GetTypeName
     //  return const name for any given types
 
 # if defined __clang__ || defined __GNUC__
     template<typename T>
-    constexpr auto GetTypeNameHashImpl()
+    constexpr auto GetTypeNameDefault()
     {
         std::string_view pretty_function{ __PRETTY_FUNCTION__ };
         auto first = pretty_function.find_first_not_of(' ', pretty_function.find_first_of('=') + 1);
@@ -186,7 +191,7 @@ namespace eti
     }
 #elif defined _MSC_VER
     template<typename T>
-    constexpr auto GetTypeNameHashImpl()
+    constexpr auto GetTypeNameDefault()
     {
         std::string_view pretty_function{ __FUNCSIG__ };
         auto first = pretty_function.find_first_not_of(' ', pretty_function.find_first_of('<') + 1);
@@ -194,9 +199,10 @@ namespace eti
         return value;
     }
 #else
-#pragma error implement type name
+#pragma error implement GetTypeNameDefault
 #endif
 
+    // user may specialize this per type
     template<typename T>
     constexpr auto GetTypeNameImpl()
     {
