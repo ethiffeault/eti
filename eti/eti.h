@@ -112,6 +112,11 @@ namespace eti
 
     using TypeId = ETI_TYPE_ID_TYPE;
 
+    #if ETI_SLIM_MODE
+        #error "slim mode not implemented yet"
+    #endif
+
+
     // Raw Type
     //  from any type whit any modifier (const, const*, *, ...) return raw type T
     //  use the prevent code blow for type, const and ptr info are stored inside Declaration
@@ -356,8 +361,6 @@ namespace eti
         Forward     // forward type
     };
 
-#if !ETI_SLIM_MODE
-
     // return compile time name for Kind
     static constexpr std::string_view GetKindName(Kind typeDesc)
     {
@@ -509,8 +512,6 @@ namespace eti
         std::span<const Variable> Arguments;
         const Type* Parent = nullptr;
 
-        static Method Make(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return = nullptr, std::span<const Variable> arguments = {});
-
         template <typename T>
         const T* GetAttribute() const;
 
@@ -527,7 +528,10 @@ namespace eti
         void CallStaticMethod(RETURN* ret, ARGS... args) const;
     };
 
-#endif
+    namespace internal
+    {
+        static Method MethodMake(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return = nullptr, std::span<const Variable> arguments = {});
+    }
 
     // Type, eti core type, represent runtime type info about <T>
     struct Type
@@ -543,13 +547,9 @@ namespace eti
         std::function<void(void* /* src */, void* /* dst */)> MoveConstruct;
         std::function<void(void* /* dst */)> Destruct;
 
-#if !ETI_SLIM_MODE
-
         std::span<const Property> Properties;
         std::span<const Method> Methods;
         std::span<const Type*> Templates;
-
-#endif
 
         bool operator==(const Type& other) const { return Id == other.Id; }
         bool operator!=(const Type& other) const { return !(*this == other); }
@@ -587,10 +587,8 @@ namespace eti
             return [](void* dst) { ((T*)dst)->~T(); };
         }
 
-#if !ETI_SLIM_MODE
-
         template<typename T>
-        static const Type Make(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {})
+        static const Type MakeType(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {})
         {
             if constexpr (std::is_void<T>::value == false)
             {
@@ -654,67 +652,6 @@ namespace eti
             }
         }
 
-#else // !ETI_SLIM_MODE
-
-        template<typename T>
-        static const Type Make(::eti::Kind kind, const Type* parent)
-        {
-            if constexpr (std::is_void<T>::value == false)
-            {
-                if  constexpr (IsCompleteType<T>)
-                {
-                    return
-                    {
-                        GetTypeName<T>(),
-                        GetTypeId<T>(),
-                        kind,
-                        sizeof(T),
-                        alignof(T),
-                        parent,
-                        GetConstruct<T>(),
-                        GetCopyConstruct<T>(),
-                        GetMoveConstruct<T>(),
-                        GetDestruct<T>(),
-                    };
-                }
-                else
-                {
-                    return
-                    {
-                        GetTypeName<T>(),
-                        GetTypeId<T>(),
-                        Kind::Forward,
-                        0,
-                        0,
-                        nullptr,
-                        nullptr,
-                        nullptr,
-                        nullptr,
-                        nullptr,
-                    };
-                }
-            }
-            else
-            {
-                return
-                {
-                    "void",
-                    0,
-                    Kind::Void,
-                    0,
-                    0,
-                    nullptr,
-                    nullptr,
-                    nullptr,
-                    nullptr,
-                    nullptr,
-                };
-            }
-        }
-    #endif // #if !ETI_SLIM_MODE
-
-    #if !ETI_SLIM_MODE
-
         const Property* GetProperty(std::string_view name) const
         {
             auto it = std::ranges::find_if(Properties, [name](const Property& it) { return it.Variable.Name == name; });
@@ -738,8 +675,6 @@ namespace eti
             auto it = std::ranges::find_if(Methods, [methodId](const Method& it) { return it.MethodId == methodId; });
             return (it != Methods.end()) ? &(*it) : nullptr;
         }
-
-    #endif
 
         bool HaveConstruct() const { return Construct != nullptr; }
         bool HaveCopyConstruct() const { return CopyConstruct != nullptr; }
@@ -788,34 +723,16 @@ namespace eti
         }
     };
 
-#if !ETI_SLIM_MODE
-
     template<typename T>
     Type __InternalGetType(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {})
     {
-        static Type type = Type::Make<T>(kind, parent, properties, methods, templates);
+        static Type type = Type::MakeType<T>(kind, parent, properties, methods, templates);
         // type may be Forward type, in this case update is on demand
         if (type.Kind == Kind::Forward && IsCompleteType<T>)
-            type = Type::Make<T>(kind, parent, properties, methods, templates);
+            type = Type::MakeType<T>(kind, parent, properties, methods, templates);
 
         return type;
     }
-
-#else
-
-    template<typename T>
-    Type __InternalGetType(::eti::Kind kind, const Type* parent)
-    {
-        static Type type = Type::Make<T>(kind, parent);
-
-        // type may be Forward type, in this case update is on demand
-        if (type.Kind == Kind::Forward && IsCompleteType<T>)
-            type = Type::Make<T>(kind, parent);
-
-        return type;
-    }
-
-#endif // #if !ETI_SLIM_MODE
 
     //
     // TypesOf
@@ -856,7 +773,7 @@ namespace eti
         static const Type& GetTypeStatic()
         {
             // default create an Unknown type
-            static Type type = Type::Make<T>(Kind::Unknown, nullptr, {}, {}, {});
+            static Type type = Type::MakeType<T>(Kind::Unknown, nullptr, {}, {}, {});
             return type;
         }
     };
@@ -962,7 +879,7 @@ namespace eti
 #define ETI_METHODS(...) __VA_ARGS__
 
 #define ETI_METHOD(NAME, ...) \
-    ::eti::Method::Make(#NAME, \
+    ::eti::internal::MethodMake(#NAME, \
     ::eti::IsMethodStatic<decltype(&Self::NAME)>, \
     ::eti::IsMethodConst<decltype(&Self::NAME)>, \
     TypeOf<Self>(), \
@@ -980,8 +897,6 @@ namespace eti
         return methods; \
     }
 
-#if !ETI_SLIM_MODE
-
 #define ETI_BASE(BASE, PROPERTIES, METHODS) \
     public: \
         using Self = BASE; \
@@ -994,18 +909,6 @@ namespace eti
 #define ETI_BASE_SLIM(CLASS) \
     ETI_BASE(CLASS, ETI_PROPERTIES(), ETI_METHODS())
 
-#else // #if !ETI_SLIM_MODE
-
-#define ETI_BASE_SLIM(BASE) \
-    public: \
-        using Self = BASE; \
-        virtual const ::eti::Type& GetType() const { return GetTypeStatic(); } \
-        ETI_TYPE_DECL_INTERNAL(BASE, nullptr, ::eti::Kind::Class) \
-    private:
-
-#endif // #if !ETI_SLIM_MODE
-
-#if !ETI_SLIM_MODE
 
 #define ETI_CLASS(CLASS, BASE, PROPERTIES, METHODS) \
     public: \
@@ -1019,20 +922,6 @@ namespace eti
 
 #define ETI_CLASS_SLIM(CLASS, BASE) \
     ETI_CLASS(CLASS, BASE, ETI_PROPERTIES(), ETI_METHODS())
-
-#else // #if !ETI_SLIM_MODE
-
-#define ETI_CLASS_SLIM(CLASS, BASE) \
-    public: \
-        using Self = CLASS; \
-        using Super = BASE; \
-        const ::eti::Type& GetType() const override { return GetTypeStatic(); }\
-        ETI_TYPE_DECL_INTERNAL(CLASS, &::eti::TypeOf<BASE>(), ::eti::Kind::Class) \
-    private: 
-
-#endif // #if !ETI_SLIM_MODE
-
-#if !ETI_SLIM_MODE
 
     // use init pattern to prevent infinite recursion (like in method with Self* as arguments)
     #define ETI_TYPE_DECL_INTERNAL(TYPE, PARENT, KIND, PROPERTIES, METHODS) \
@@ -1050,20 +939,6 @@ namespace eti
         return type; \
     }
 
-#else // #if !ETI_SLIM_MODE
-
-    #define ETI_TYPE_DECL_INTERNAL(TYPE, PARENT, KIND) \
-    using Self = TYPE; \
-    static constexpr ::eti::TypeId TypeId = ::eti::GetTypeId<TYPE>();\
-    static const ::eti::Type& GetTypeStatic()  \
-    {  \
-        static ::eti::Type type = ::eti::__InternalGetType<TYPE>(KIND, PARENT); \
-        return type; \
-    }
-
-#endif // #if !ETI_SLIM_MODE
-
-#if !ETI_SLIM_MODE
 
 #define ETI_STRUCT(STRUCT, PROPERTIES, METHODS) \
     ETI_TYPE_DECL_INTERNAL(STRUCT, nullptr, ::eti::Kind::Struct, PROPERTIES, METHODS) \
@@ -1087,41 +962,11 @@ namespace eti
         }; \
     }
 
-#else // #if !ETI_SLIM_MODE
-
-#define ETI_STRUCT_SLIM(STRUCT) \
-    ETI_TYPE_DECL_INTERNAL(STRUCT, nullptr, ::eti::Kind::Struct) \
-    ETI_PROPERTY_INTERNAL(PROPERTIES) \
-    ETI_METHOD_INTERNAL(METHODS)
-
-#define ETI_TYPE_IMPL(TYPE, KIND, PARENT) \
-    namespace eti \
-    { \
-        template<> \
-        struct TypeOfImpl<TYPE> \
-        { \
-            static const ::eti::Type& GetTypeStatic() \
-            { \
-                static ::eti::Type type = ::eti::__InternalGetType<TYPE>(KIND, PARENT); \
-                return type; \
-            } \
-        }; \
-    }
-#endif // #if !ETI_SLIM_MODE
-
 // use in global namespace
-
-#if !ETI_SLIM_MODE
 
 #define ETI_POD(TYPE) \
     ETI_TYPE_IMPL(TYPE, ::eti::Kind::Pod, nullptr, {})
 
-#else // #if !ETI_SLIM_MODE
-
-#define ETI_POD(TYPE) \
-    ETI_TYPE_IMPL(TYPE, ::eti::Kind::Pod, nullptr)
-
-#endif // #if !ETI_SLIM_MODE
 
 #define ETI_TEMPLATE_1_IMPL(TYPE) \
     namespace eti \
@@ -1139,8 +984,6 @@ namespace eti
 
 // use in global namespace
 
-#if !ETI_SLIM_MODE
-
 #define ETI_POD_NAMED(T, NAME) \
     namespace eti \
     { \
@@ -1151,21 +994,6 @@ namespace eti
         } \
     } \
     ETI_TYPE_IMPL(T, ::eti::Kind::Pod, nullptr, {})
-
-#else // #if !ETI_SLIM_MODE
-
-#define ETI_POD_NAMED(T, NAME) \
-    namespace eti \
-    { \
-        template<> \
-        constexpr auto GetTypeNameImpl<RawType<T>>() \
-        { \
-            return ::std::string_view(#NAME); \
-        } \
-    } \
-    ETI_TYPE_IMPL(T, ::eti::Kind::Pod, nullptr)
-
-#endif // #if !ETI_SLIM_MODE
 
 #define ETI_TEMPLATE_2_IMPL(TYPE) \
     namespace eti \
@@ -1192,23 +1020,21 @@ namespace eti
 //        {
 //            static std::vector<Method> methods = 
 //            {
-//                Method::Make("Size", [](void* obj, void* r, std::span<void*>)
+//                internal::MethodMake("Size", [](void* obj, void* r, std::span<void*>)
 //                {
 //                    std::vector<T1, T2>* array = (std::vector<T1, T2>*) obj;
 //                    int* returnValue = (int*)r;
 //                    *returnValue = (int)array->size();
 //                }),
-//                Method::Make("Get", nullptr),
-//                Method::Make("Add", nullptr),
-//                Method::Make("Remove", nullptr)
+//                internal::MethodMake("Get", nullptr),
+//                internal::MethodMake("Add", nullptr),
+//                internal::MethodMake("Remove", nullptr)
 //            };
-//            static Type type = Type::Make<std::vector<T1, T2>>(Kind::Template, nullptr, {},  methods, TypesOf<T1, T2>());
+//            static Type type = Type::MakeType<std::vector<T1, T2>>(Kind::Template, nullptr, {},  methods, TypesOf<T1, T2>());
 //            return type;  
 //        } 
 //    }; 
 //}
-
-#if !ETI_SLIM_MODE
 
 // Attribute
 namespace eti
@@ -1277,20 +1103,23 @@ namespace eti
 
     // Method Impl
 
-    inline Method Method::Make(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return /*= nullptr*/, std::span<const Variable> arguments /*= {}*/)
+    namespace internal
     {
-        return
+        inline Method MethodMake(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return /*= nullptr*/, std::span<const Variable> arguments /*= {}*/)
         {
-            name,
-            GetStringHash(name),
-            isStatic,
-            isConst,
-            function,
-            _return,
-            arguments,
-            &parent,
-            // todo: attributes
-        };
+            return
+            {
+                name,
+                GetStringHash(name),
+                isStatic,
+                isConst,
+                function,
+                _return,
+                arguments,
+                &parent,
+                // todo: attributes
+            };
+        }
     }
 
     template <typename T>
@@ -1350,8 +1179,6 @@ namespace eti
         Function(nullptr, ret, voidArgs);
     }
 }
-
-#endif // #if !ETI_SLIM_MODE
 
 #if ETI_TRIVIAL_POD
 

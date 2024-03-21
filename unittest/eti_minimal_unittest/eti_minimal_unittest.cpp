@@ -1,7 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <unittest/doctest.h>
 
-#define ETI_SLIM_MODE 1
+#define ETI_SLIM_MODE 0 // todo: set to 1 once implemented
 #include <eti/eti.h>
 
 ////////////////////////////////////////////////////////////////////////////////
