@@ -112,6 +112,7 @@
 
 namespace eti
 {
+
 #pragma region Forwards
 
     using TypeId = ETI_TYPE_ID_TYPE;
@@ -148,6 +149,29 @@ namespace eti
 
         template<typename T>
         using RawType = typename RawTypeImpl<T>::Type;
+
+        // IsPtrConstImpl
+
+        template<typename T>
+        struct IsPtrConstImpl : std::false_type {};
+
+        template<typename T>
+        struct IsPtrConstImpl<const T*> : std::true_type {};
+
+        template<typename T>
+        static constexpr bool IsPtrConst = IsPtrConstImpl<T>::value;
+
+
+        // IsRefConstImpl
+
+        template<typename T>
+        struct IsRefConstImpl : std::false_type {};
+
+        template<typename T>
+        struct IsRefConstImpl<const T&> : std::true_type {};
+
+        template<typename T>
+        static constexpr bool IsRefConst = IsRefConstImpl<T>::value;
 
         // IsCompleteType<T>
 
@@ -431,7 +455,7 @@ namespace eti
         // Property
 
         template <typename T>
-        static Property MakeProperty(std::string_view name, size_t offset, std::vector<std::shared_ptr<Attribute>>&& attributes = {});
+        static Property MakeProperty(std::string_view name, size_t offset, const Type& parent, std::vector<std::shared_ptr<Attribute>>&& attributes = {});
 
         //
         // Type
@@ -538,9 +562,10 @@ namespace eti
     struct Declaration
     {
         const Type& Type;
-        bool IsPtr = false;
-        bool IsRef = false;     // todo: ref are considered as ptr for now
-        bool IsConst = false;
+        bool IsValue:1 = false;
+        bool IsPtr:1 = false;
+        bool IsRef:1 = false;     // todo: ref are considered as ptr for now
+        bool IsConst:1 = false;
     };
 
     // Variable, used for function args, property...
@@ -555,15 +580,18 @@ namespace eti
     {
         Variable Variable;
         size_t Offset;
+        const Type& Parent;
         TypeId PropertyId = 0;
         std::vector<std::shared_ptr<Attribute>> Attributes;
-        const Type* Parent = nullptr; // todo
 
         template <typename T>
         const T* GetAttribute() const;
 
         template <typename T>
         const T* HaveAttribute() const;
+
+        template <typename OBJECT>
+        void* UnSafeGetPtr(OBJECT& obj) const;
 
         template <typename OBJECT, typename T>
         void Set(OBJECT& obj, const T& value) const;
@@ -678,7 +706,7 @@ namespace eti
 
 #define ETI_PROPERTIES(...) __VA_ARGS__
 
-#define ETI_PROPERTY(NAME, ...) ::eti::internal::MakeProperty<decltype(NAME)>(#NAME, offsetof(Self, NAME), ::eti::Attribute::GetAttributes(__VA_ARGS__))
+#define ETI_PROPERTY(NAME, ...) ::eti::internal::MakeProperty<decltype(NAME)>(#NAME, offsetof(Self, NAME), TypeOf<Self>(),  ::eti::Attribute::GetAttributes(__VA_ARGS__))
 
 #define ETI_PROPERTY_INTERNAL(...) \
     static const std::span<::eti::Property> GetProperties() \
@@ -864,8 +892,10 @@ namespace eti
             return
             {
                 TypeOfForward<T>(),
+                !std::is_pointer<T>::value && !std::is_reference<T>::value,
                 std::is_pointer_v<T>,
-                std::is_const_v<T>,
+                std::is_reference_v<T>,
+                std::is_pointer_v<T> ? utils::IsPtrConst<T> :  (std::is_reference_v<T> ? utils::IsRefConst<T> : std::is_const_v<T>)
             };
         }
 
@@ -926,12 +956,15 @@ namespace eti
         // Property
 
         template <typename T>
-        Property MakeProperty(std::string_view name, size_t offset, std::vector<std::shared_ptr<Attribute>>&& attributes /*= {}*/)
+        Property MakeProperty(std::string_view name, size_t offset, const Type& parent, std::vector<std::shared_ptr<Attribute>>&& attributes /*= {}*/)
         {
+            ETI_ASSERT(!std::is_reference<T>(), "reference not supported for property, (offsetof return always 0)");
+
             return
             {
                 ::eti::internal::MakeVariable(name, ::eti::internal::MakeDeclaration<T>()),
                 offset,
+                parent,
                 utils::GetStringHash(name),
                 std::move(attributes)
             };
@@ -1042,12 +1075,12 @@ namespace eti
         template<typename T>
         const Type& OwnerGetType()
         {
-            if constexpr (utils::HaveGetTypeStatic<T>)
-                return T::GetTypeStatic();
+            using RawType = utils::RawType<T>;
+            if constexpr (utils::HaveGetTypeStatic<RawType>)
+                return RawType::GetTypeStatic();
             else
-                return TypeOfImpl<utils::RawType<T>>::template GetTypeStatic();
+                return TypeOfImpl<RawType>::template GetTypeStatic();
         }
-
     }
 
 #pragma endregion
@@ -1060,22 +1093,49 @@ namespace eti
         return GetAttribute<T>() != nullptr;
     }
 
+    template <typename OBJECT>
+    void* Property::UnSafeGetPtr(OBJECT& obj) const
+    {
+        ETI_ASSERT(IsA(TypeOf<OBJECT>(), Parent), "Invalid object type" << TypeOf<OBJECT>().Name << ", should be: " << Parent.Name);
+        return ((char*)&obj + Offset);
+    }
+
     template <typename OBJECT, typename T>
     void Property::Set(OBJECT& obj, const T& value) const
     {
-        // ETI_ASSERT(IsA(obj, *Parent)); todo
-        ETI_ASSERT(Variable.Declaration.Type == TypeOf<T>(), "invalid type");
-        T* ptr = (T*)((char*)&obj + Offset);
-        *ptr = value;
+        if (Variable.Declaration.IsPtr)
+        {
+            ETI_ASSERT(Variable.Declaration.IsPtr && std::is_pointer_v<T>, "try to set a pointer property providing not pointer value");
+            ETI_ASSERT( IsA( TypeOf<T>(), Variable.Declaration.Type ), "bad pointer type: " << IsA(TypeOf<T>().Name << "trying to set ptr of type: " << Variable.Declaration.Type.Name));
+            T* ptr = (T*)UnSafeGetPtr(obj);
+            *ptr = value;
+        }
+        else
+        {
+            ETI_ASSERT(!Variable.Declaration.IsPtr && !std::is_pointer_v<T>, "try to set a value property providing a pointer value");
+            ETI_ASSERT( TypeOf<T>() == Variable.Declaration.Type, "bad value type: " << IsA(TypeOf<T>().Name << "trying to set value of type: " << Variable.Declaration.Type.Name));
+            T* ptr = (T*)UnSafeGetPtr(obj);
+            *ptr = value;
+        }
     }
 
     template <typename OBJECT, typename T>
     void Property::Get(OBJECT& obj, T& value) const
     {
-        // ETI_ASSERT(IsA(obj, *Parent)); todo
-        ETI_ASSERT(Variable.Declaration.Type == TypeOf<T>(), "invalid type");
-        T* ptr = (T*)((char*)&obj + Offset);
-        value = *ptr;
+        if (Variable.Declaration.IsPtr)
+        {
+            ETI_ASSERT(Variable.Declaration.IsPtr && std::is_pointer_v<T>, "try to set a pointer property providing not pointer value");
+            ETI_ASSERT( IsA( TypeOf<T>(), Variable.Declaration.Type ), "bad pointer type: " << IsA(TypeOf<T>().Name << "trying to set ptr of type: " << Variable.Declaration.Type.Name));
+            T* ptr = (T*)UnSafeGetPtr(obj);
+            value = *ptr;
+        }
+        else
+        {
+            ETI_ASSERT(!Variable.Declaration.IsPtr && !std::is_pointer_v<T>, "try to set a value property providing a pointer value");
+            ETI_ASSERT( TypeOf<T>() == Variable.Declaration.Type, "bad value type: " << IsA(TypeOf<T>().Name << "trying to set value of type: " << Variable.Declaration.Type.Name));
+            T* ptr = (T*)UnSafeGetPtr(obj);
+            value = *ptr;
+        }
     }
 
 #pragma endregion
@@ -1309,6 +1369,7 @@ namespace eti
     }
 
 #pragma endregion
+
 }
 
 #if ETI_TRIVIAL_POD

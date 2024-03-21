@@ -21,7 +21,11 @@
 //  SOFTWARE.
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+
+#include <iostream>
+
 #include "doctest.h"
+
 #include <eti/eti.h>
 
 #if !ETI_SLIM_MODE
@@ -646,7 +650,7 @@ namespace test_13
         void MemberFunction(){}
     };
 
-    TEST_CASE("test_09")
+    TEST_CASE("test_13")
     {
         const Type& type = TypeOf<Foo>();
         const Method* method = type.GetMethod("MemberFunction");
@@ -654,74 +658,221 @@ namespace test_13
         REQUIRE(method->Return->Declaration.Type.Kind == Kind::Void);
     }
 }
-////////////////////////////////////////////////////////////////////////////////
-namespace doc_introduction
-{
-    using namespace eti;
 
-    struct Point
+
+namespace test_14
+{
+
+    struct Foo
     {
         ETI_STRUCT(
-            Point, 
-            ETI_PROPERTIES( 
-                ETI_PROPERTY( X ), 
-                ETI_PROPERTY( Y ) ),
-            ETI_METHODS( 
-                ETI_METHOD( SetX ), 
-                ETI_METHOD( Add ) ) )
+            Foo, 
+                ETI_PROPERTIES
+                (
+                    ETI_PROPERTY(intValue),
+                    ETI_PROPERTY(intConstValue),
+                    ETI_PROPERTY(intPtr),
+                    ETI_PROPERTY(intConstPtr),
+                ),
+                ETI_METHODS())
 
-        void SetX(int x)
-        {
-            X = x;
-        }
+        int intValue;
+        const int intConstValue;
 
-        static Point Add(const Point& p0, const Point& p1)
-        {
-            return { p0.X + p1.X, p0.Y + p1.Y };
-        }
-
-        int X = 0;
-        int Y = 0;
+        int* intPtr;
+        const int* intConstPtr;
     };
 
-    TEST_CASE("doc_introduction")
+    TEST_CASE("test_14")
     {
-        const Type& type = TypeOf<Point>();
+        int i = 0;
+        Foo foo = { i, i, &i, &i};
 
-        // set value using property
         {
+            const Property* p = TypeOf<Foo>().GetProperty("intValue");
+            const Declaration& decl = p->Variable.Declaration;
 
-            const Property* propertyX = type.GetProperty("X");
-            Point p{ 1, 1 };
-            propertyX->Set(p, 2);
-
-            // stout: p.x = 2
-            std::cout << "p.x = " << p.X << std::endl;       
+            REQUIRE(decl.IsValue == true);
+            REQUIRE(decl.IsConst == false);
+            REQUIRE(decl.IsPtr == false);
+            REQUIRE(decl.IsRef == false);
         }
 
-        // call SetX
         {
-            const Method* set = type.GetMethod("SetX");
-            Point p{ 1, 1 };
-            int value = 101;
-            set->CallMethod(p, (void*)nullptr, &value);
+            const Property* p = TypeOf<Foo>().GetProperty("intConstValue");
+            const Declaration& decl = p->Variable.Declaration;
 
-
-            // stout: p.x = 101
-            std::cout << "p.x = " << p.X << std::endl;       
+            REQUIRE(decl.IsValue == true);
+            REQUIRE(decl.IsConst == true);
+            REQUIRE(decl.IsPtr == false);
+            REQUIRE(decl.IsRef == false);
         }
 
-        // call static method Add
         {
-            const Method* add = type.GetMethod("Add");
-            Point p1{ 1, 1 };
-            Point p2{ 2, 2 };
-            Point result;
-            add->CallStaticMethod(&result, &p1, &p2);
+            const Property* p = TypeOf<Foo>().GetProperty("intPtr");
+            const Declaration& decl = p->Variable.Declaration;
 
-            // stout: p1 + p2 = {3, 3}
-            std::cout << "p1 + p2 = {" << result.X << ", " << result.Y << "}" << std::endl; 
+            REQUIRE(decl.IsValue == false);
+            REQUIRE(decl.IsConst == false);
+            REQUIRE(decl.IsPtr == true);
+            REQUIRE(decl.IsRef == false);
         }
+
+        {
+            const Property* p = TypeOf<Foo>().GetProperty("intConstPtr");
+            const Declaration& decl = p->Variable.Declaration;
+
+            REQUIRE(decl.IsValue == false);
+            REQUIRE(decl.IsConst == true);
+            REQUIRE(decl.IsPtr == true);
+            REQUIRE(decl.IsRef == false);
+        }
+    }
+}
+
+namespace test_15
+{
+
+    struct Foo
+    {
+        ETI_STRUCT(
+            Foo,
+            ETI_PROPERTIES
+            (
+                ETI_PROPERTY(intValue),
+                ETI_PROPERTY(intConstValue),
+                ETI_PROPERTY(intPtr),
+                ETI_PROPERTY(intConstPtr),
+            ),
+            ETI_METHODS())
+
+        int intValue = 0;
+        const int intConstValue = 1;
+
+        int* intPtr = nullptr;
+        const int* intConstPtr = nullptr;
+    };
+
+    TEST_CASE("test_15")
+    {
+
+        const Type& type = TypeOf<Foo>();
+
+        int intValue = 1;
+        int intConstValue = 1;
+        int* intPtr = nullptr;
+        const int* intConstPtr = nullptr;
+
+        int someValue = 101;
+        
+        Foo foo = { intValue, intConstValue, intPtr, intConstPtr };
+
+        {
+            const Property* p = TypeOf<Foo>().GetProperty("intValue");
+            const Declaration& decl = p->Variable.Declaration;
+            void* ptr = p->UnSafeGetPtr(foo);
+            REQUIRE(ptr == &foo.intValue);
+
+            p->Set(foo, 12);
+            REQUIRE(foo.intValue == 12);
+
+        }
+
+        {
+            const Property* p = TypeOf<Foo>().GetProperty("intConstValue");
+            const Declaration& decl = p->Variable.Declaration;
+            void* ptr = p->UnSafeGetPtr(foo);
+            REQUIRE(ptr == &foo.intConstValue);
+
+            p->Set(foo, 12);
+            REQUIRE(foo.intConstValue == 12);
+
+        }
+
+        {
+            const Property* p = TypeOf<Foo>().GetProperty("intPtr");
+            const Declaration& decl = p->Variable.Declaration;
+            void* ptr = p->UnSafeGetPtr(foo);
+            REQUIRE(ptr == &foo.intPtr);
+
+            p->Set(foo, &someValue);
+            REQUIRE(*foo.intPtr == someValue);
+
+        }
+
+        {
+            const Property* p = TypeOf<Foo>().GetProperty("intConstPtr");
+            const Declaration& decl = p->Variable.Declaration;
+            void* ptr = p->UnSafeGetPtr(foo);
+            REQUIRE(ptr == &foo.intConstPtr);
+
+            p->Set(foo, &someValue);
+            REQUIRE(*foo.intConstPtr == someValue);
+        }
+    }
+}
+
+namespace test_16
+{
+    class Foo;
+    class Doo;
+
+    class Object
+    {
+        ETI_BASE(Object, ETI_PROPERTIES
+        (
+            ETI_PROPERTY(ObjectPtr),
+            ETI_PROPERTY(FooPtr),
+            ETI_PROPERTY(DooPtr),
+        ), 
+            ETI_METHODS())
+
+    public:
+
+        Object* ObjectPtr = nullptr;
+        Foo* FooPtr = nullptr;
+        Doo* DooPtr = nullptr;
+
+        Object(){}
+        virtual ~Object(){}
+    };
+
+    class Foo : public Object
+    {
+        ETI_CLASS_SLIM(Foo, Object)
+    };
+
+    class Doo : public Object
+    {
+        ETI_CLASS_SLIM(Foo, Object)
+    };
+
+    TEST_CASE("test_15")
+    {
+        Object object;
+        Foo foo;
+        Doo doo;
+
+        const Type& objectType = Object::GetTypeStatic();
+        const Property* objectPtrProperty = objectType.GetProperty("ObjectPtr");
+        const Property* fooPtrProperty = objectType.GetProperty("FooPtr");
+        const Property* dooPtrProperty = objectType.GetProperty("DooPtr");
+
+        objectPtrProperty->Set(object, &object);
+        REQUIRE(object.ObjectPtr == &object);
+        Object* obj;
+        objectPtrProperty->Get(object, obj);
+        REQUIRE(obj == object.ObjectPtr);
+
+        objectPtrProperty->Set(object, &foo);
+        REQUIRE(object.ObjectPtr == &foo);
+        objectPtrProperty->Get(object, obj);
+        REQUIRE(obj == object.ObjectPtr);
+
+        objectPtrProperty->Set(object, &doo);
+        REQUIRE(object.ObjectPtr == &doo);
+        objectPtrProperty->Get(object, obj);
+        REQUIRE(obj == object.ObjectPtr);
     }
 }
 
