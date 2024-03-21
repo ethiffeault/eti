@@ -29,6 +29,8 @@
 #include <string_view>
 #include <span>
 
+#pragma region Configuration
+
 // Configuration overriding
 //
 //  1. set ETI_CONFIG_HEADER to 1 to use external header : "eti_config.h"
@@ -106,11 +108,21 @@
     #error "slim mode not implemented yet"
 #endif
 
+#pragma endregion
+
 namespace eti
 {
-    // Forward types
+#pragma region Forwards
 
+    using TypeId = ETI_TYPE_ID_TYPE;
     struct Type;
+    struct Declaration;
+    struct Variable;
+    struct Property;
+    struct Method;
+    enum class Kind : std::uint8_t;
+
+    class Attribute;
 
     template<typename T>
     const Type& TypeOf();
@@ -118,10 +130,11 @@ namespace eti
     template<typename T>
     const Type& TypeOfForward();
 
-    using TypeId = ETI_TYPE_ID_TYPE;
+    static constexpr std::string_view GetKindName(Kind typeDesc);
 
+#pragma endregion
 
-    // Utils
+#pragma region Utils
 
     // Raw Type
     //  from any type whit any modifier (const, const*, *, ...) return raw type T
@@ -199,10 +212,10 @@ namespace eti
         return value;
     }
 #else
-#pragma error implement GetTypeNameDefault
+    #pragma error implement GetTypeNameDefault
 #endif
 
-    // user may specialize this per type
+    // user may specialize this per type to have custom name (be careful to hash clash)
     template<typename T>
     constexpr auto GetTypeNameImpl()
     {
@@ -216,7 +229,6 @@ namespace eti
     }
 
     // Hash constexpr string_view to constexpr TypeId
-
     constexpr TypeId HashFNV1WithPrime(const std::string_view str, TypeId hash = ETI_HASH_SEED)
     {
         std::uint64_t prime = 0x100000001B3ull;
@@ -233,7 +245,6 @@ namespace eti
     }
 
     // Simple hash constexpr string_view to constexpr TypeId (faster)
-
     constexpr TypeId HashFNV1(std::string_view str, TypeId hash = ETI_HASH_SEED)
     {
         for (char c : str)
@@ -352,10 +363,73 @@ namespace eti
         CallMemberFunctionImpl<OBJECT, RETURN, ARGS...>::Call(func, obj, ret, args);
     }
 
-    // Types
+    // utility to know at compile time if a T have static method : const Type& GetTypeStatic()
     //
-    // all types have default construct/copy/move/destruct and use static Make(...) method pattern for construction (may be template and easier code reading)
-    // note that user only have access to const type, not need to to have public accessor
+    // ex: if constexpr (HasStaticGetTypeStatic<T>) {...}
+    template<typename T>
+    struct HasStaticGetTypeStaticImpl
+    {
+
+    private:
+
+        template<typename _T>
+        static constexpr auto Check(_T*)
+            -> typename std::is_same<decltype(_T::GetTypeStatic()), const Type&>::type
+        {
+            return {};
+        }
+
+        template<typename>
+        static constexpr std::false_type Check(...)
+        {
+            return {};
+        }
+
+        typedef decltype(Check<T>(nullptr)) type;
+
+    public:
+
+        static constexpr bool value = type::value;
+    };
+
+    template<typename T>
+    static constexpr bool HasStaticGetTypeStatic = HasStaticGetTypeStaticImpl<T>::value;
+
+    template<typename T>
+    static std::function<void(void* /* dst */)> GetConstruct()
+    {
+        if constexpr (std::is_default_constructible_v<T>)
+            return [](void* dst) { new (dst) T(); };
+        else
+            return {};
+    }
+
+    template<typename T>
+    static std::function<void(void* /* src */, void* /* dst */)> GetCopyConstruct()
+    {
+        if constexpr (std::is_copy_constructible_v<T>)
+            return [](void* src, void* dst) { new (dst) T(*(T*)src); };
+        else
+            return {};
+    }
+
+    template<typename T>
+    static std::function<void(void* /* src */, void* /* dst */)> GetMoveConstruct()
+    {
+        if constexpr (std::is_default_constructible_v<T>)
+            return [](void* src, void* dst) { new (dst) T(std::move(*(T*)src)); };
+        else
+            return {};
+    }
+
+    template<typename T>
+    static std::function<void(void* /* dst */)> GetDestruct()
+    {
+        return [](void* dst) { ((T*)dst)->~T(); };
+    }
+
+#pragma endregion
+
     enum class Kind : std::uint8_t
     {
         Void,       // void
@@ -367,7 +441,7 @@ namespace eti
         Forward     // forward type
     };
 
-    // return compile time name for Kind
+    // return constexpr name for Kind
     static constexpr std::string_view GetKindName(Kind typeDesc)
     {
         switch (typeDesc)
@@ -384,6 +458,8 @@ namespace eti
                 return "template";
             case Kind::Unknown:
                 return "unknown";
+            case Kind::Forward:
+                return "forward";
         }
     }
 
@@ -391,28 +467,9 @@ namespace eti
     struct Declaration
     {
         const Type& Type;
-        bool IsPtr = false;         // note: ref are considered as ptr in eti
+        bool IsPtr = false;
+        bool IsRef = false;     // todo: ref are considered as ptr for now
         bool IsConst = false;
-
-        template <typename T>
-        static Declaration Make()
-        {
-            return
-            {
-                TypeOfForward<T>(),
-                std::is_pointer_v<T>,
-                std::is_const_v<T>,
-            };
-        }
-    };
-
-    // class/struct access
-    enum class Access : std::uint8_t
-    {
-        Private,
-        Protected,
-        Public,
-        Unknown
     };
 
     // variable, used for function args, property...
@@ -420,65 +477,7 @@ namespace eti
     {
         std::string_view Name;
         Declaration Declaration;
-
-        static Variable Make(std::string_view name, ::eti::Declaration declaration)
-        {
-            return
-            {
-                name,
-                declaration,
-            };
-        }
     };
-
-    // Helper to create and get variables
-
-    template<typename T>
-    const Variable* GetVariable(std::string_view name)
-    {
-        static Variable variable = Variable::Make(name, Declaration::Make<T>());
-        return &variable;
-    }
-
-    template<typename... ARGS>
-    std::span<Variable> GetVariables()
-    {
-        // note: name not supported yet (maybe in c++ 34?)
-        static std::vector<Variable> variables = { Variable::Make("", Declaration::Make<ARGS>())... };
-        return variables;
-    }
-
-    // GetFunctionVariables, return variables args of the function
-
-    // static 
-    template<typename RETURN, typename... ARGS>
-    const Variable* GetFunctionReturn(RETURN(*func)(ARGS...))
-    {
-        return GetVariable<RETURN>("");
-    }
-
-    // member
-    template<typename OBJECT, typename RETURN, typename... ARGS>
-    const Variable* GetFunctionReturn(RETURN(OBJECT::* func)(ARGS...))
-    {
-        return GetVariable<RETURN>("");
-    }
-
-    // static 
-    template<typename RETURN, typename... ARGS>
-    std::span<Variable> GetFunctionVariables(RETURN(*func)(ARGS...))
-    {
-        return GetVariables<ARGS...>();
-    }
-
-    // member
-    template<typename OBJECT, typename RETURN, typename... ARGS>
-    std::span<Variable> GetFunctionVariables(RETURN(OBJECT::* func)(ARGS...))
-    {
-        return GetVariables<ARGS...>();
-    }
-
-    class Attribute;
 
     // member variable of class/struct
     struct Property
@@ -488,10 +487,6 @@ namespace eti
         TypeId PropertyId = 0;
         std::vector<std::shared_ptr<Attribute>> Attributes;
         const Type* Parent = nullptr; // todo
-
-
-        template <typename T>
-        static Property Make(std::string_view name, size_t offset, std::vector<std::shared_ptr<Attribute>>&& attributes = {});
 
         template <typename T>
         const T* GetAttribute() const;
@@ -534,11 +529,6 @@ namespace eti
         void CallStaticMethod(RETURN* ret, ARGS... args) const;
     };
 
-    namespace internal
-    {
-        static Method MethodMake(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return = nullptr, std::span<const Variable> arguments = {});
-    }
-
     // Type, eti core type, represent runtime type info about <T>
     struct Type
     {
@@ -559,104 +549,6 @@ namespace eti
 
         bool operator==(const Type& other) const { return Id == other.Id; }
         bool operator!=(const Type& other) const { return !(*this == other); }
-
-        template<typename T>
-        static std::function<void(void* /* dst */)> GetConstruct()
-        {
-            if constexpr (std::is_default_constructible_v<T>)
-                return [](void* dst) { new (dst) T(); };
-            else
-                return {};
-        }
-
-        template<typename T>
-        static std::function<void(void* /* src */, void* /* dst */)> GetCopyConstruct()
-        {
-            if constexpr (std::is_copy_constructible_v<T>)
-                return [](void* src, void* dst) { new (dst) T(*(T*)src); };
-            else
-                return {};
-        }
-
-        template<typename T>
-        static std::function<void(void* /* src */, void* /* dst */)> GetMoveConstruct()
-        {
-            if constexpr (std::is_default_constructible_v<T>)
-                return [](void* src, void* dst) { new (dst) T(std::move(*(T*)src)); };
-            else
-                return {};
-        }
-
-        template<typename T>
-        static std::function<void(void* /* dst */)> GetDestruct()
-        {
-            return [](void* dst) { ((T*)dst)->~T(); };
-        }
-
-        template<typename T>
-        static const Type MakeType(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {})
-        {
-            if constexpr (std::is_void<T>::value == false)
-            {
-                if  constexpr (IsCompleteType<T>)
-                {
-                    return
-                    {
-                        GetTypeName<T>(),
-                        GetTypeId<T>(),
-                        kind,
-                        sizeof(T),
-                        alignof(T),
-                        parent,
-                        GetConstruct<T>(),
-                        GetCopyConstruct<T>(),
-                        GetMoveConstruct<T>(),
-                        GetDestruct<T>(),
-                        properties,
-                        methods,
-                        templates
-                    };
-                }
-                else
-                {
-                    return
-                    {
-                        GetTypeName<T>(),
-                        GetTypeId<T>(),
-                        Kind::Forward,
-                        0,
-                        0,
-                        nullptr,
-                        nullptr,
-                        nullptr,
-                        nullptr,
-                        nullptr,
-                        {},
-                        {},
-                        {}
-                    };
-                }
-            }
-            else
-            {
-                return
-                {
-                    "void",
-                    0,
-                    Kind::Void,
-                    0,
-                    0,
-                    nullptr,
-                    nullptr,
-                    nullptr,
-                    nullptr,
-                    nullptr,
-                    {},
-                    {},
-                    {}
-                };
-            }
-        }
 
         const Property* GetProperty(std::string_view name) const
         {
@@ -729,46 +621,69 @@ namespace eti
         }
     };
 
-    template<typename T>
-    Type __InternalGetType(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {})
-    {
-        static Type type = Type::MakeType<T>(kind, parent, properties, methods, templates);
-        // type may be Forward type, in this case update is on demand
-        if (type.Kind == Kind::Forward && IsCompleteType<T>)
-            type = Type::MakeType<T>(kind, parent, properties, methods, templates);
 
-        return type;
+
+#pragma region internal forwards
+
+    //internal forwards
+    namespace internal
+    {
+
+        //
+        // Declaration
+
+        template <typename T>
+        static Declaration MakeDeclaration();
+
+        //
+        // Variable
+
+        static Variable MakeVariable(std::string_view name, ::eti::Declaration declaration);
+
+        template<typename T>
+        const Variable* GetVariableInstance(std::string_view name);
+
+        template<typename... ARGS>
+        std::span<Variable> GetVariableInstances();
+
+        //
+        // Methods
+
+        template<typename RETURN, typename... ARGS>
+        const Variable* GetFunctionReturn(RETURN(*func)(ARGS...));
+
+        // Member method
+        template<typename OBJECT, typename RETURN, typename... ARGS>
+        const Variable* GetFunctionReturn(RETURN(OBJECT::* func)(ARGS...));
+
+        // Static method
+        template<typename RETURN, typename... ARGS>
+        std::span<Variable> GetFunctionVariables(RETURN(*func)(ARGS...));
+
+        // Member method
+        template<typename OBJECT, typename RETURN, typename... ARGS>
+        std::span<Variable> GetFunctionVariables(RETURN(OBJECT::* func)(ARGS...));
+
+        // Method
+        static Method MethodMake(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return = nullptr, std::span<const Variable> arguments = {});
+
+        //
+        // Property
+
+        template <typename T>
+        static Property MakeProperty(std::string_view name, size_t offset, std::vector<std::shared_ptr<Attribute>>&& attributes = {});
+
+        //
+        // Type
+
+        template<typename T>
+        static const Type MakeType(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {});
+
+        template<typename T>
+        Type GetTypeInstance(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {});
     }
 
-    //
-    // TypesOf
-
-    template<typename T>
-    struct HasStaticGetTypeStatic
-    {
-
-    private:
-
-        template<typename _T>
-        static constexpr auto Check(_T*)
-            -> typename std::is_same<decltype(_T::GetTypeStatic()), const Type&>::type
-        {
-            return {};
-        }
-
-        template<typename>
-        static constexpr std::false_type Check(...)
-        {
-            return {};
-        }
-
-        typedef decltype(Check<T>(nullptr)) type;
-
-    public:
-
-        static constexpr bool value = type::value;
-    };
-
+#pragma endregion internal forwards
 
     template<typename... Args>
     std::span<const Type*> TypesOf();
@@ -779,7 +694,7 @@ namespace eti
         static const Type& GetTypeStatic()
         {
             // default create an Unknown type
-            static Type type = Type::MakeType<T>(Kind::Unknown, nullptr, {}, {}, {});
+            static Type type = internal::MakeType<T>(Kind::Unknown, nullptr, {}, {}, {});
             return type;
         }
     };
@@ -788,7 +703,7 @@ namespace eti
     template<typename T>
     const Type& OwnerGetType()
     {
-        if constexpr (HasStaticGetTypeStatic<T>::value)
+        if constexpr (HasStaticGetTypeStatic<T>)
             return T::GetTypeStatic();
         else
             return TypeOfImpl<RawType<T>>::template GetTypeStatic();
@@ -873,7 +788,7 @@ namespace eti
 
 #define ETI_PROPERTIES(...) __VA_ARGS__
 
-#define ETI_PROPERTY(NAME, ...) ::eti::Property::Make<decltype(NAME)>(#NAME, offsetof(Self, NAME), ::eti::Attribute::GetAttributes(__VA_ARGS__))
+#define ETI_PROPERTY(NAME, ...) ::eti::internal::MakeProperty<decltype(NAME)>(#NAME, offsetof(Self, NAME), ::eti::Attribute::GetAttributes(__VA_ARGS__))
 
 #define ETI_PROPERTY_INTERNAL(...) \
     static const std::span<::eti::Property> GetProperties() \
@@ -893,8 +808,8 @@ namespace eti
     { \
         ::eti::CallFunction(&NAME, obj, _return, args); \
     }, \
-    GetFunctionReturn(&NAME), \
-    GetFunctionVariables(&NAME))
+    ::eti::internal::GetFunctionReturn(&NAME), \
+    ::eti::internal::GetFunctionVariables(&NAME))
 
 #define ETI_METHOD_INTERNAL(...) \
     static const std::span<::eti::Method> GetMethods() \
@@ -940,7 +855,7 @@ namespace eti
         if (initializing == false) \
         { \
             initializing = true; \
-            type = ::eti::__InternalGetType<TYPE>(KIND, PARENT, TYPE::GetProperties(), TYPE::GetMethods(), {}); \
+            type = ::eti::internal::GetTypeInstance<TYPE>(KIND, PARENT, TYPE::GetProperties(), TYPE::GetMethods(), {}); \
         } \
         return type; \
     }
@@ -962,7 +877,7 @@ namespace eti
         { \
             static const ::eti::Type& GetTypeStatic() \
             { \
-                static ::eti::Type type = ::eti::__InternalGetType<TYPE>(KIND, PARENT, PROPERTY_VARIABLES, {}, {}); \
+                static ::eti::Type type = ::eti::internal::GetTypeInstance<TYPE>(KIND, PARENT, PROPERTY_VARIABLES, {}, {}); \
                 return type; \
             } \
         }; \
@@ -982,7 +897,7 @@ namespace eti
         {  \
             static const Type& GetTypeStatic()  \
             {  \
-                static ::eti::Type type = ::eti::__InternalGetType<TYPE<T1>>(::eti::Kind::Template, nullptr, {}, {}, ::eti::TypesOf<T1>());  \
+                static ::eti::Type type = ::eti::internal::GetTypeInstance<TYPE<T1>>(::eti::Kind::Template, nullptr, {}, {}, ::eti::TypesOf<T1>());  \
                 return type;  \
             } \
         }; \
@@ -1009,7 +924,7 @@ namespace eti
         {  \
             static const ::eti::Type& GetTypeStatic()  \
             {  \
-                static ::eti::Type::eti:: type = ::eti::__InternalGetType<TYPE<T1, T2>>(::eti::Kind::Template, nullptr, {}, {}, ::eti::TypesOf<T1, T2>());  \
+                static ::eti::Type::eti:: type = ::eti::internal::GetTypeInstance<TYPE<T1, T2>>(::eti::Kind::Template, nullptr, {}, {}, ::eti::TypesOf<T1, T2>());  \
                 return type;  \
             } \
         }; \
@@ -1059,19 +974,6 @@ namespace eti
         }
     };
 
-    // Property Impl
-    template <typename T>
-    inline Property Property::Make(std::string_view name, size_t offset, std::vector<std::shared_ptr<Attribute>>&& attributes /*= {}*/)
-    {
-        return
-        {
-            ::eti::Variable::Make(name, ::eti::Declaration::Make<T>()),
-            offset,
-            GetStringHash(name),
-            std::move(attributes)
-        };
-    }
-
     template <typename T>
     const T* Property::GetAttribute() const
     {
@@ -1109,8 +1011,95 @@ namespace eti
 
     // Method Impl
 
+#pragma region internal impl
+
     namespace internal
     {
+        //
+        // Declaration
+
+        template <typename T>
+        static Declaration MakeDeclaration()
+        {
+            return
+            {
+                TypeOfForward<T>(),
+                std::is_pointer_v<T>,
+                std::is_const_v<T>,
+            };
+        }
+
+        //
+        // Variable
+
+        static Variable MakeVariable(std::string_view name, ::eti::Declaration declaration)
+        {
+            return
+            {
+                name,
+                declaration,
+            };
+        }
+
+        template<typename T>
+        const Variable* GetVariableInstance(std::string_view name)
+        {
+            static Variable variable = internal::MakeVariable(name, internal::MakeDeclaration<T>());
+            return &variable;
+        }
+
+        template<typename... ARGS>
+        std::span<Variable> GetVariableInstances()
+        {
+            static std::vector<Variable> variables = { internal::MakeVariable("", internal::MakeDeclaration<ARGS>())... };
+            return variables;
+        }
+
+        //
+        // Methods
+
+        template<typename RETURN, typename... ARGS>
+        const Variable* GetFunctionReturn(RETURN(*func)(ARGS...))
+        {
+            return internal::GetVariableInstance<RETURN>("");
+        }
+
+        template<typename OBJECT, typename RETURN, typename... ARGS>
+        const Variable* GetFunctionReturn(RETURN(OBJECT::* func)(ARGS...))
+        {
+            return internal::GetVariableInstance<RETURN>("");
+        }
+
+        template<typename RETURN, typename... ARGS>
+        std::span<Variable> GetFunctionVariables(RETURN(*func)(ARGS...))
+        {
+            return internal::GetVariableInstances<ARGS...>();
+        }
+
+        template<typename OBJECT, typename RETURN, typename... ARGS>
+        std::span<Variable> GetFunctionVariables(RETURN(OBJECT::* func)(ARGS...))
+        {
+            return internal::GetVariableInstances<ARGS...>();
+        }
+
+        //
+        // Property
+
+        template <typename T>
+        Property MakeProperty(std::string_view name, size_t offset, std::vector<std::shared_ptr<Attribute>>&& attributes /*= {}*/)
+        {
+            return
+            {
+                ::eti::internal::MakeVariable(name, ::eti::internal::MakeDeclaration<T>()),
+                offset,
+                GetStringHash(name),
+                std::move(attributes)
+            };
+        }
+
+        //
+        // Method
+
         inline Method MethodMake(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return /*= nullptr*/, std::span<const Variable> arguments /*= {}*/)
         {
             return
@@ -1126,7 +1115,85 @@ namespace eti
                 // todo: attributes
             };
         }
+
+        template<typename T>
+        static const Type MakeType(::eti::Kind kind, const Type* parent, std::span<const Property> properties /*= {}*/, std::span<const Method> methods /*= {}*/, std::span<const Type*> templates /*= {}*/)
+        {
+            if constexpr (std::is_void<T>::value == false)
+            {
+                if  constexpr (IsCompleteType<T>)
+                {
+                    return
+                    {
+                        GetTypeName<T>(),
+                        GetTypeId<T>(),
+                        kind,
+                        sizeof(T),
+                        alignof(T),
+                        parent,
+                        GetConstruct<T>(),
+                        GetCopyConstruct<T>(),
+                        GetMoveConstruct<T>(),
+                        GetDestruct<T>(),
+                        properties,
+                        methods,
+                        templates
+                    };
+                }
+                else
+                {
+                    return
+                    {
+                        GetTypeName<T>(),
+                        GetTypeId<T>(),
+                        Kind::Forward,
+                        0,
+                        0,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        {},
+                        {},
+                        {}
+                    };
+                }
+            }
+            else
+            {
+                return
+                {
+                    "void",
+                    0,
+                    Kind::Void,
+                    0,
+                    0,
+                    nullptr,
+                    nullptr,
+                    nullptr,
+                    nullptr,
+                    nullptr,
+                    {},
+                    {},
+                    {}
+                };
+            }
+        }
+
+        template<typename T>
+        Type GetTypeInstance(::eti::Kind kind, const Type* parent, std::span<const Property> properties /*= {}*/, std::span<const Method> methods /*= {}*/, std::span<const Type*> templates /*= {}*/)
+        {
+            static Type type = internal::MakeType<T>(kind, parent, properties, methods, templates);
+            // type may be Forward type, in this case update it on demand
+            if (type.Kind == Kind::Forward && IsCompleteType<T>)
+                type = internal::MakeType<T>(kind, parent, properties, methods, templates);
+
+            return type;
+        }
     }
+
+#pragma endregion internal impl
 
     template <typename T>
     const T* Method::GetAttribute() const

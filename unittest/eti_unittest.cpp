@@ -471,6 +471,15 @@ namespace test_09
 ////////////////////////////////////////////////////////////////////////////////
 namespace test_10
 {
+    // class/struct access
+    enum class Access : std::uint8_t
+    {
+        Private,
+        Protected,
+        Public,
+        Unknown
+    };
+
     class AccessAttribute : public eti::Attribute
     {
         ETI_CLASS_SLIM(AccessAttribute, Attribute)
@@ -482,7 +491,7 @@ namespace test_10
             Access = access;
         }
 
-        eti::Access Access = Access::Unknown;
+        Access Access = Access::Unknown;
     };
 
     struct Foo
