@@ -183,9 +183,56 @@ ex:
     //  Adult Age is 21
     //  Person::Age member is private of type : i32
 ```
+for advance usage, Property provide this to get member variable pointer (offset from obj):
 
-## Methods (member and static)
-## Attributes (on types, properties and methods)
+```
+    inline void* Property::UnSafeGetPtr(void* obj) const;
+    
+    template <typename OBJECT>
+    void* Property::UnSafeGetPtr(OBJECT& obj) const;
+```
+
+
+## Methods
+wip
+## Attributes
+
+Attribute are supported on Struct, Class, Properties ans Methods
+
+* Struct
+wip
+* Class
+wip
+* Properties
+base class: eti::PropertyAttribute
+* Methods
+wip
+
+
+All kind of Attribute may be user defined like this:
+```
+    class Accessibility : public eti::PropertyAttribute
+    {
+        ETI_CLASS_SLIM(Accessibility, PropertyAttribute)
+
+    public:
+
+        Accessibility(Access access)
+        {
+            Access = access;
+        }
+
+        Access Access = Access::Unknown;
+    };
+
+    // use it on any property, ex:
+    ETI_PROPERTY(Age, Accessibility(Access::Private), Documentation("Age..."), ...)
+
+    // query it:
+    const Property* ageProperty = type.GetProperty("Age");
+    Access access = ageProperty->GetAttribute<Accessibility>()->Access;
+```    
+
 ## Repository
 
 To enable Repository use config : 
