@@ -624,6 +624,28 @@ namespace test_12
     }
 }
 
+
+namespace test_13
+{
+
+    struct Foo
+    {
+        ETI_STRUCT(
+            Foo, 
+            ETI_PROPERTIES(),
+            ETI_METHODS( ETI_METHOD( MemberFunction ) ) )
+
+        void MemberFunction(){}
+    };
+
+    TEST_CASE("test_09")
+    {
+        const Type& type = TypeOf<Foo>();
+        const Method* method = type.GetMethod("MemberFunction");
+        REQUIRE(method != nullptr);
+        REQUIRE(method->Return->Declaration.Type.Kind == Kind::Void);
+    }
+}
 ////////////////////////////////////////////////////////////////////////////////
 namespace doc_introduction
 {
@@ -633,10 +655,19 @@ namespace doc_introduction
     {
         ETI_STRUCT(
             Point, 
-            ETI_PROPERTIES( ETI_PROPERTY(X), ETI_PROPERTY(Y)),
-            ETI_METHODS( ETI_METHOD(Mul)))
+            ETI_PROPERTIES( 
+                ETI_PROPERTY( X ), 
+                ETI_PROPERTY( Y ) ),
+            ETI_METHODS( 
+                ETI_METHOD( SetX ), 
+                ETI_METHOD( Add ) ) )
 
-        static Point Mul(const Point& p0, const Point& p1)
+        void SetX(int x)
+        {
+            X = x;
+        }
+
+        static Point Add(const Point& p0, const Point& p1)
         {
             return { p0.X + p1.X, p0.Y + p1.Y };
         }
@@ -648,20 +679,41 @@ namespace doc_introduction
     TEST_CASE("doc_introduction")
     {
         const Type& type = TypeOf<Point>();
-        //const Property* xProperty = type.GetProperty("X");
-        //const Property* yProperty = type.GetProperty("Y");
-        //const Method* mul = type.GetMethod("Mul");
 
-        //Point p1{ 1, 1 };
-        //Point p2{ 2, 2 };
+        // set value using property
+        {
 
-        //Point result;
-        //std::vector args;
-        //mul->Function(nullptr, &result, { &p1, &p2 });
+            const Property* propertyX = type.GetProperty("X");
+            Point p{ 1, 1 };
+            propertyX->Set(p, 2);
 
-    
+            // stout: p.x = 2
+            std::cout << "p.x = " << p.X << std::endl;       
+        }
+
+        // call SetX
+        {
+            const Method* set = type.GetMethod("SetX");
+            Point p{ 1, 1 };
+            int value = 101;
+            set->CallMethod(p, (void*)nullptr, &value);
 
 
+            // stout: p.x = 101
+            std::cout << "p.x = " << p.X << std::endl;       
+        }
+
+        // call static method Add
+        {
+            const Method* add = type.GetMethod("Add");
+            Point p1{ 1, 1 };
+            Point p2{ 2, 2 };
+            Point result;
+            add->CallStaticMethod(&result, &p1, &p2);
+
+            // stout: p1 + p2 = {3, 3}
+            std::cout << "p1 + p2 = {" << result.X << ", " << result.Y << "}" << std::endl; 
+        }
     }
 }
 

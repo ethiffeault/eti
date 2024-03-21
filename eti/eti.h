@@ -52,9 +52,9 @@
         // Assert and Error
         #include <cassert>
         #include <memory>
-        #define ETI_ASSERT(cond, msg) assert(cond)
+        #define ETI_ASSERT(cond, msg, ...) assert(cond)
         #define ETI_ERROR(msg) assert(true)
-        #define ETI_INTERNAL_ASSERT(cond, msg) assert(cond)
+        #define ETI_INTERNAL_ASSERT(cond, msg, ...) assert(cond)
         #define ETI_INTERNAL_ERROR(msg) assert(true)
     #endif
 
@@ -478,28 +478,23 @@ namespace eti
         size_t Offset;
         TypeId PropertyId = 0;
         std::vector<std::shared_ptr<Attribute>> Attributes;
-        
+        const Type* Parent = nullptr; // todo
+
 
         template <typename T>
-        static Property Make(std::string_view name, size_t offset, std::vector<std::shared_ptr<Attribute>>&& attributes = {})
-        {
-            return
-            {
-                ::eti::Variable::Make(name, ::eti::Declaration::Make<T>()),
-                offset,
-                GetStringHash(name),
-                std::move(attributes)
-            };
-        }
+        static Property Make(std::string_view name, size_t offset, std::vector<std::shared_ptr<Attribute>>&& attributes = {});
 
         template <typename T>
         const T* GetAttribute() const;
 
         template <typename T>
-        const T* HaveAttribute() const
-        {
-            return GetAttribute<T>() != nullptr;
-        }
+        const T* HaveAttribute() const;
+
+        template <typename OBJECT, typename T>
+        void Set(OBJECT& obj, const T& value) const;
+
+        template <typename OBJECT, typename T>
+        void Get(OBJECT& obj, T& value) const;
     };
 
     // method of class/struct
@@ -512,40 +507,24 @@ namespace eti
         std::function<void(void*, void*, std::span<void*>)> Function;
         const Variable* Return;
         std::span<const Variable> Arguments;
+        const Type* Parent = nullptr;
 
-        static Method Make(std::string_view name, bool isStatic, bool isConst, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return = nullptr, std::span<const Variable> arguments = {})
-        {
-            return
-            {
-                name,
-                GetStringHash(name),
-                isStatic,
-                isConst,
-                function,
-                _return,
-                arguments,
-                // todo: attributes
-            };
-        }
+        static Method Make(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return = nullptr, std::span<const Variable> arguments = {});
 
         template <typename T>
-        const T* GetAttribute() const
-        {
-            // not implemented
-            return nullptr;
-        }
+        const T* GetAttribute() const;
 
         template <typename T>
-        const T* HaveAttribute() const
-        {
-            return GetAttribute<T>() != nullptr;
-        }
+        const T* HaveAttribute() const;
+
+        template <typename... ARGS>
+        bool IsValidArgs();
 
         template <typename OWNER, typename RETURN, typename... ARGS>
-        void Call(OWNER& owner, RETURN* ret, ARGS... args)
-        {
-            
-        }
+        void CallMethod(OWNER& owner, RETURN* ret, ARGS... args) const;
+
+        template <typename RETURN, typename... ARGS>
+        void CallStaticMethod(RETURN* ret, ARGS... args) const;
     };
 
 #endif
@@ -986,6 +965,7 @@ namespace eti
     ::eti::Method::Make(#NAME, \
     ::eti::IsMethodStatic<decltype(&Self::NAME)>, \
     ::eti::IsMethodConst<decltype(&Self::NAME)>, \
+    TypeOf<Self>(), \
     [](void* obj, void* _return, std::span<void*> args) \
     { \
         ::eti::CallFunction(&NAME, obj, _return, args); \
@@ -1247,6 +1227,19 @@ namespace eti
         }
     };
 
+    // Property Impl
+    template <typename T>
+    inline Property Property::Make(std::string_view name, size_t offset, std::vector<std::shared_ptr<Attribute>>&& attributes /*= {}*/)
+    {
+        return
+        {
+            ::eti::Variable::Make(name, ::eti::Declaration::Make<T>()),
+            offset,
+            GetStringHash(name),
+            std::move(attributes)
+        };
+    }
+
     template <typename T>
     const T* Property::GetAttribute() const
     {
@@ -1256,6 +1249,105 @@ namespace eti
                 return Cast<T>(a.get());
         }
         return nullptr;
+    }
+
+    template <typename T>
+    const T* Property::HaveAttribute() const
+    {
+        return GetAttribute<T>() != nullptr;
+    }
+
+    template <typename OBJECT, typename T>
+    void Property::Set(OBJECT& obj, const T& value) const
+    {
+        // ETI_ASSERT(IsA(obj, *Parent)); todo
+        ETI_ASSERT(Variable.Declaration.Type == TypeOf<T>(), "invalid type");
+        T* ptr = (T*)((char*)&obj + Offset);
+        *ptr = value;
+    }
+
+    template <typename OBJECT, typename T>
+    void Property::Get(OBJECT& obj, T& value) const
+    {
+        // ETI_ASSERT(IsA(obj, *Parent)); todo
+        ETI_ASSERT(Variable.Declaration.Type == TypeOf<T>(), "invalid type");
+        T* ptr = (T*)((char*)&obj + Offset);
+        value = *ptr;
+    }
+
+    // Method Impl
+
+    inline Method Method::Make(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return /*= nullptr*/, std::span<const Variable> arguments /*= {}*/)
+    {
+        return
+        {
+            name,
+            GetStringHash(name),
+            isStatic,
+            isConst,
+            function,
+            _return,
+            arguments,
+            &parent,
+            // todo: attributes
+        };
+    }
+
+    template <typename T>
+    const T* Method::GetAttribute() const
+    {
+        // not implemented
+        return nullptr;
+    }
+
+    template <typename T>
+    const T* Method::HaveAttribute() const
+    {
+        return GetAttribute<T>() != nullptr;
+    }
+
+    template <typename... ARGS>
+    bool Method::IsValidArgs()
+    {
+        // todo, validate each args using Arguments
+        return true;
+    }
+
+    template <typename... ARGS>
+    std::vector<void*> BuildArgs(ARGS... args)
+    {
+        return { args... };
+    }
+
+    template <typename OWNER, typename RETURN, typename... ARGS>
+    void Method::CallMethod(OWNER& owner, RETURN* ret, ARGS... args) const
+    {
+        if (ret == nullptr)
+            ETI_ASSERT(Return->Declaration.Type.Kind == Kind::Void, "cannot provide return value on method returning void: %s::%s()", Parent->Name, Name);
+        else
+            ETI_ASSERT(Return->Declaration.Type.Kind != Kind::Void, "missing return value on method with return: %s::%s()", Parent->Name, Name);
+
+        //ETI_ASSERT(IsValidArgs<ARGS...>(), "invalid arguments calling method: %s::%s()", Parent->Name, Name);
+
+        std::vector<void*> voidArgs = BuildArgs(args...);
+
+        Function(&owner, ret, voidArgs);
+
+    }
+     
+    template <typename RETURN, typename... ARGS>
+    void Method::CallStaticMethod(RETURN* ret, ARGS... args) const
+    {
+        if (ret == nullptr)
+            ETI_ASSERT(Return->Declaration.Type.Kind == Kind::Void, "cannot provide return value on method returning void: %s::%s()", Parent->Name, Name);
+        else
+            ETI_ASSERT(Return->Declaration.Type.Kind != Kind::Void, "missing return value on method with return: %s::%s()", Parent->Name, Name);
+
+        //ETI_ASSERT(IsValidArgs<ARGS...>(), "invalid arguments calling method: %s::%s()", Parent->Name, Name);
+
+        std::vector<void*> voidArgs = BuildArgs(args...);
+
+        Function(nullptr, ret, voidArgs);
     }
 }
 
