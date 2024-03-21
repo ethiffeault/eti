@@ -624,7 +624,6 @@ namespace test_12
     }
 }
 
-
 namespace test_13
 {
 

@@ -1141,7 +1141,7 @@ namespace eti
 
 #if !ETI_SLIM_MODE
 
-#define ETI_NAMED_POD(T, NAME) \
+#define ETI_POD_NAMED(T, NAME) \
     namespace eti \
     { \
         template<> \
@@ -1154,7 +1154,7 @@ namespace eti
 
 #else // #if !ETI_SLIM_MODE
 
-#define ETI_NAMED_POD(T, NAME) \
+#define ETI_POD_NAMED(T, NAME) \
     namespace eti \
     { \
         template<> \
@@ -1357,17 +1357,17 @@ namespace eti
 
 ETI_POD(bool);
 
-ETI_NAMED_POD(std::int8_t, i8);
-ETI_NAMED_POD(std::int16_t, i16);
-ETI_NAMED_POD(std::int32_t, i32);
-ETI_NAMED_POD(std::int64_t, i64);
+ETI_POD_NAMED(std::int8_t, i8);
+ETI_POD_NAMED(std::int16_t, i16);
+ETI_POD_NAMED(std::int32_t, i32);
+ETI_POD_NAMED(std::int64_t, i64);
 
-ETI_NAMED_POD(std::uint8_t, s8);
-ETI_NAMED_POD(std::uint16_t, s16);
-ETI_NAMED_POD(std::uint32_t, s32);
-ETI_NAMED_POD(std::uint64_t, s64);
+ETI_POD_NAMED(std::uint8_t, s8);
+ETI_POD_NAMED(std::uint16_t, s16);
+ETI_POD_NAMED(std::uint32_t, s32);
+ETI_POD_NAMED(std::uint64_t, s64);
 
-ETI_NAMED_POD(std::float_t, f32);
-ETI_NAMED_POD(std::double_t, f64);
+ETI_POD_NAMED(std::float_t, f32);
+ETI_POD_NAMED(std::double_t, f64);
 
 #endif
