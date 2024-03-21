@@ -624,8 +624,8 @@ namespace test_12
 
     TEST_CASE("test_09")
     {
-        constexpr bool isMemberFunctionStatic = IsMethodStatic<decltype(&Foo::MemberFunction)>;
-        constexpr bool isStaticFunctionStatic = IsMethodStatic<decltype(&Foo::StaticFunction)>;
+        constexpr bool isMemberFunctionStatic = utils::IsMethodStatic<decltype(&Foo::MemberFunction)>;
+        constexpr bool isStaticFunctionStatic = utils::IsMethodStatic<decltype(&Foo::StaticFunction)>;
 
         static_assert(isMemberFunctionStatic == false);
         static_assert(isStaticFunctionStatic == true);

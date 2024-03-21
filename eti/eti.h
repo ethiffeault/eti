@@ -66,8 +66,8 @@
     #endif
 
     #ifndef ETI_HASH_FUNCTION
-        //#define ETI_HASH_FUNCTION ::eti::HashFNV1
-        #define ETI_HASH_FUNCTION ::eti::HashFNV1WithPrime
+        //#define ETI_HASH_FUNCTION ::eti::utils::HashFNV1
+        #define ETI_HASH_FUNCTION ::eti::utils::HashFNV1WithPrime
         #define ETI_HASH_SEED 0xCBF29CE484222325ull
     #endif
         
@@ -136,62 +136,325 @@ namespace eti
 
 #pragma region Utils
 
-    // Raw Type
-    //  from any type whit any modifier (const, const*, *, ...) return raw type T
-    //  use the prevent code blow for type, const and ptr info are stored inside Declaration
-
-    template<typename T>
-    struct RawTypeImpl
+    namespace utils
     {
-        using Type = std::decay_t<std::remove_pointer_t<T>>;
-    };
+        // RawType<T>
 
-    template<typename T>
-    using RawType = typename RawTypeImpl<T>::Type;
+        template<typename T>
+        struct RawTypeImpl
+        {
+            using Type = std::decay_t<std::remove_pointer_t<T>>;
+        };
 
-    // IsCompleteType
+        template<typename T>
+        using RawType = typename RawTypeImpl<T>::Type;
 
-    template<typename T, typename = std::void_t<>>
-    struct IsCompleteTypeImpl : std::false_type {};
+        // IsCompleteType<T>
 
-    template<typename T>
-    struct IsCompleteTypeImpl<T, std::void_t<decltype(sizeof(T))>> : std::true_type {};
+        template<typename T, typename = std::void_t<>>
+        struct IsCompleteTypeImpl : std::false_type {};
 
-    template<typename T>
-    constexpr bool IsCompleteType = IsCompleteTypeImpl<T>::value;
+        template<typename T>
+        struct IsCompleteTypeImpl<T, std::void_t<decltype(sizeof(T))>> : std::true_type {};
 
-    // IsForwardType
-    template<typename T, typename = std::void_t<>>
-    struct IsForwardTypeImpl : std::true_type {};
+        template<typename T>
+        constexpr bool IsCompleteType = IsCompleteTypeImpl<T>::value;
 
-    template<typename T>
-    struct IsForwardTypeImpl<T, std::void_t<decltype(sizeof(T))>> : std::false_type {};
+        // IsForwardType<T>
 
-    template<typename T>
-    constexpr bool IsForwardType = IsForwardTypeImpl<T>::value;
+        template<typename T, typename = std::void_t<>>
+        struct IsForwardTypeImpl : std::true_type {};
 
-    // IsMethodStatic
-    template<typename T>
-    struct IsMethodStaticImpl :  std::false_type {};
+        template<typename T>
+        struct IsForwardTypeImpl<T, std::void_t<decltype(sizeof(T))>> : std::false_type {};
 
-    template<typename RETURN, typename... ARGS>
-    struct IsMethodStaticImpl< RETURN(*)(ARGS...) > : std::true_type {};
+        template<typename T>
+        constexpr bool IsForwardType = IsForwardTypeImpl<T>::value;
 
-    template<typename T>
-    constexpr bool IsMethodStatic = IsMethodStaticImpl<T>::value;
+        // IsMethodStatic<T>
 
-    // IsMethodConst
-    template<typename T>
-    struct IsMethodConstImpl :  std::false_type {};
+        template<typename T>
+        struct IsMethodStaticImpl : std::false_type {};
 
-    template<typename OBJECT, typename RETURN, typename... ARGS>
-    struct IsMethodConstImpl< RETURN(OBJECT::*)(ARGS...) const > : std::true_type {};
+        template<typename RETURN, typename... ARGS>
+        struct IsMethodStaticImpl< RETURN(*)(ARGS...) > : std::true_type {};
 
-    template<typename T>
-    constexpr bool IsMethodConst = IsMethodConstImpl<T>::value;
+        template<typename T>
+        constexpr bool IsMethodStatic = IsMethodStaticImpl<T>::value;
+
+        // IsMethodConst<T>
+
+        template<typename T>
+        struct IsMethodConstImpl : std::false_type {};
+
+        template<typename OBJECT, typename RETURN, typename... ARGS>
+        struct IsMethodConstImpl< RETURN(OBJECT::*)(ARGS...) const > : std::true_type {};
+
+        template<typename T>
+        constexpr bool IsMethodConst = IsMethodConstImpl<T>::value;
+
+        template <typename... ARGS>
+        std::vector<void*> GetVoidPtrFromArgs(ARGS... args)
+        {
+            return { args... };
+        }
+
+        // Hash constexpr string_view to constexpr TypeId
+        constexpr TypeId HashFNV1WithPrime(const std::string_view str, TypeId hash = ETI_HASH_SEED)
+        {
+            std::uint64_t prime = 0x100000001B3ull;
+
+            for (char c : str)
+            {
+                hash ^= static_cast<TypeId>(c);
+                hash *= prime;
+                hash = (hash << 5) | (hash >> (64 - 5));
+                hash ^= 0x27d4eb2d;
+                hash *= 0x00000100000001B3;
+            }
+            return hash;
+        }
+
+        // Simple hash constexpr string_view to constexpr TypeId (faster)
+        constexpr TypeId HashFNV1(std::string_view str, TypeId hash = ETI_HASH_SEED)
+        {
+            for (char c : str)
+            {
+                hash ^= static_cast<TypeId>(c);
+                hash *= 0x100000001B3ull;
+            }
+            return hash;
+        }
+
+        constexpr TypeId GetStringHash(const std::string_view str)
+        {
+            return ETI_HASH_FUNCTION(str);
+        }
+
+        // cast void* to T and remove ref if needed
+        template<typename T>
+        auto VoidPrtToTypeArg(void* ptr) -> decltype(auto)
+        {
+            if constexpr (std::is_reference_v<T>)
+            {
+                using PtrType = std::remove_reference_t<T>*;
+                return *static_cast<PtrType>(ptr);
+            }
+            else
+            {
+                return *static_cast<T*>(ptr);
+            }
+        }
+
+        // convert void* args to tuple
+        template<typename... ARGS, size_t... Is>
+        auto VoidArgsToTuple(std::span<void*> args, std::index_sequence<Is...>)
+        {
+            return std::make_tuple(&utils::VoidPrtToTypeArg<ARGS>(args[Is])...);
+        }
+
+
+        // static function call
+
+        // static function call with return value
+        template<typename RETURN, typename... ARGS>
+        struct CallStaticFunctionImpl
+        {
+            static void Call(RETURN(*func)(ARGS...), void* obj, void* ret, std::span<void*> args)
+            {
+                ETI_ASSERT(ret != nullptr, "call function that return void should have ret arg to nullptr");
+                auto args_tuple = utils::VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
+                std::apply([&](auto... applyArgs) { *((RETURN*)ret) = func(*applyArgs...); }, args_tuple);
+            }
+        };
+
+        // static function call no return
+        template<typename... ARGS>
+        struct CallStaticFunctionImpl<void, ARGS...>
+        {
+            static void Call(void(*func)(ARGS...), void* obj, void* ret, std::span<void*> args)
+            {
+                ETI_ASSERT(ret == nullptr, "call function that return void should have ret arg to nullptr");
+                auto args_tuple = VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
+                std::apply([&](auto... applyArgs) { func(*applyArgs...); }, args_tuple);
+
+            }
+        };
+
+        // static function call switch
+        template<typename RETURN, typename... ARGS>
+        void CallFunction(RETURN(*func)(ARGS...), void* obj, void* ret, std::span<void*> args)
+        {
+            ETI_ASSERT(sizeof...(ARGS) == args.size(), "invalid size of args");
+            ETI_ASSERT(obj == nullptr, "call static function should have obj to nullptr");
+            CallStaticFunctionImpl<RETURN, ARGS...>::Call(func, obj, ret, args);
+        }
+
+        // member function call
+
+        // member function call with return value
+        template<typename OBJECT, typename RETURN, typename... ARGS>
+        struct CallMemberFunctionImpl
+        {
+            static void Call(RETURN(OBJECT::* func)(ARGS...), void* obj, void* ret, std::span<void*> args)
+            {
+                ETI_ASSERT(ret != nullptr, "internal error");
+                auto args_tuple = utils::VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
+                std::apply([&](auto... applyArgs) { *((RETURN*)ret) = ((OBJECT*)obj->*func)(*applyArgs...); }, args_tuple);
+
+            }
+        };
+
+        // member function call void return
+        template<typename OBJECT, typename... ARGS>
+        struct CallMemberFunctionImpl<OBJECT, void, ARGS...>
+        {
+            static void Call(void(OBJECT::* func)(ARGS...), void* obj, void* ret, std::span<void*> args)
+            {
+                ETI_ASSERT(ret == nullptr, "internal error");
+                auto args_tuple = utils::VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
+                std::apply([&](auto... applyArgs) { ((OBJECT*)obj->*func)(*applyArgs...); }, args_tuple);
+            }
+        };
+
+        // member function call switch
+        template<typename OBJECT, typename RETURN, typename... ARGS>
+        void CallFunction(RETURN(OBJECT::* func)(ARGS...), void* obj, void* ret, std::span<void*> args)
+        {
+            ETI_ASSERT(sizeof...(ARGS) == args.size(), "invalid size of args");
+            ETI_ASSERT(obj != nullptr, "internal error");
+            CallMemberFunctionImpl<OBJECT, RETURN, ARGS...>::Call(func, obj, ret, args);
+        }
+
+        // utility to know at compile time if a T have static method : const Type& GetTypeStatic()
+        //
+        // ex: if constexpr (HaveGetTypeStatic<T>) {...}
+        template<typename T>
+        struct HaveGetTypeStaticImpl
+        {
+            template<typename _T>
+            static constexpr auto Check(_T*)
+                -> typename std::is_same<decltype(_T::GetTypeStatic()), const Type&>::type
+            {
+                return {};
+            }
+
+            template<typename>
+            static constexpr std::false_type Check(...)
+            {
+                return {};
+            }
+
+            typedef decltype(Check<T>(nullptr)) type;
+            static constexpr bool value = type::value;
+        };
+
+        template<typename T>
+        static constexpr bool HaveGetTypeStatic = HaveGetTypeStaticImpl<T>::value;
+
+        template<typename T>
+        static std::function<void(void* /* dst */)> GetConstruct()
+        {
+            if constexpr (std::is_default_constructible_v<T>)
+                return [](void* dst) { new (dst) T(); };
+            else
+                return nullptr;
+        }
+
+        template<typename T>
+        static std::function<void(void* /* src */, void* /* dst */)> GetCopyConstruct()
+        {
+            if constexpr (std::is_copy_constructible_v<T>)
+                return [](void* src, void* dst) { new (dst) T(*(T*)src); };
+            else
+                return nullptr;
+        }
+
+        template<typename T>
+        static std::function<void(void* /* src */, void* /* dst */)> GetMoveConstruct()
+        {
+            if constexpr (std::is_default_constructible_v<T>)
+                return [](void* src, void* dst) { new (dst) T(std::move(*(T*)src)); };
+            else
+                return nullptr;
+        }
+
+        template<typename T>
+        static std::function<void(void* /* dst */)> GetDestruct()
+        {
+            return [](void* dst) { ((T*)dst)->~T(); };
+        }
+    }
+
+#pragma endregion
+
+#pragma region Internal forwards
+
+    //internal forwards
+    namespace internal
+    {
+        //
+        // Declaration
+
+        template <typename T>
+        static Declaration MakeDeclaration();
+
+        //
+        // Variable
+
+        static Variable MakeVariable(std::string_view name, ::eti::Declaration declaration);
+
+        template<typename T>
+        const Variable* GetVariableInstance(std::string_view name);
+
+        template<typename... ARGS>
+        std::span<Variable> GetVariableInstances();
+
+        //
+        // Methods
+
+        template<typename RETURN, typename... ARGS>
+        const Variable* GetFunctionReturn(RETURN(*func)(ARGS...));
+
+        template<typename OBJECT, typename RETURN, typename... ARGS>
+        const Variable* GetFunctionReturn(RETURN(OBJECT::* func)(ARGS...));
+
+        template<typename RETURN, typename... ARGS>
+        std::span<Variable> GetFunctionVariables(RETURN(*func)(ARGS...));
+
+        template<typename OBJECT, typename RETURN, typename... ARGS>
+        std::span<Variable> GetFunctionVariables(RETURN(OBJECT::* func)(ARGS...));
+
+        static Method MethodMake(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return = nullptr, std::span<const Variable> arguments = {});
+
+        //
+        // Property
+
+        template <typename T>
+        static Property MakeProperty(std::string_view name, size_t offset, std::vector<std::shared_ptr<Attribute>>&& attributes = {});
+
+        //
+        // Type
+
+        template<typename T>
+        static const Type MakeType(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {});
+
+        template<typename T>
+        Type GetTypeInstance(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {});
+
+        template<typename... ARGS>
+        std::span<const Type*> GetTypeInstances();
+
+        // internal Utils
+        // use static const Type& T::GetTypeStatic(){...} if available
+        template<typename T>
+        const Type& OwnerGetType();
+    }
+
+#pragma endregion
 
     // GetTypeName
-    //  return const name for any given types
+    //  return constexpr name for any given types
 
 # if defined __clang__ || defined __GNUC__
     template<typename T>
@@ -216,6 +479,7 @@ namespace eti
 #endif
 
     // user may specialize this per type to have custom name (be careful to hash clash)
+    //  ex: use in ETI_POD_NAMED macro
     template<typename T>
     constexpr auto GetTypeNameImpl()
     {
@@ -225,210 +489,15 @@ namespace eti
     template<typename T>
     constexpr auto GetTypeName()
     {
-        return GetTypeNameImpl<RawType<T>>();
-    }
-
-    // Hash constexpr string_view to constexpr TypeId
-    constexpr TypeId HashFNV1WithPrime(const std::string_view str, TypeId hash = ETI_HASH_SEED)
-    {
-        std::uint64_t prime = 0x100000001B3ull;
-
-        for (char c : str)
-        {
-            hash ^= static_cast<TypeId>(c);
-            hash *= prime;
-            hash = (hash << 5) | (hash >> (64 - 5));
-            hash ^= 0x27d4eb2d;
-            hash *= 0x00000100000001B3;
-        }
-        return hash;
-    }
-
-    // Simple hash constexpr string_view to constexpr TypeId (faster)
-    constexpr TypeId HashFNV1(std::string_view str, TypeId hash = ETI_HASH_SEED)
-    {
-        for (char c : str)
-        {
-            hash ^= static_cast<TypeId>(c);
-            hash *= 0x100000001B3ull;
-        }
-        return hash;
-    }
-
-    constexpr TypeId GetStringHash(const std::string_view str)
-    {
-        return ETI_HASH_FUNCTION(str);
+        return GetTypeNameImpl<utils::RawType<T>>();
     }
 
     template<typename T>
     constexpr TypeId GetTypeId()
     {
         ETI_ERROR("GetTypeId not defined for this type");
-        return GetStringHash(GetTypeName<T>());
+        return utils::GetStringHash(GetTypeName<T>());
     }
-
-    // void* vs type helpers
-
-    // cast void* to T and remove ref if needed
-    template<typename T>
-    auto VoidPrtToTypeArg(void* ptr) -> decltype(auto)
-    {
-        if constexpr (std::is_reference_v<T>)
-        {
-            using PtrType = std::remove_reference_t<T>*;
-            return *static_cast<PtrType>(ptr);
-        }
-        else
-        {
-            return *static_cast<T*>(ptr);
-        }
-    }
-
-    // convert void* args to tuple
-    template<typename... ARGS, size_t... Is>
-    auto VoidArgsToTuple(std::span<void*> args, std::index_sequence<Is...>)
-    {
-        return std::make_tuple(&VoidPrtToTypeArg<ARGS>(args[Is])...);
-    }
-
-    // static function call
-
-    // static function call with return value
-    template<typename RETURN, typename... ARGS>
-    struct CallStaticFunctionImpl
-    {
-        static void Call(RETURN(*func)(ARGS...), void* obj, void* ret, std::span<void*> args)
-        {
-            ETI_ASSERT(ret != nullptr, "call function that return void should have ret arg to nullptr");
-            auto args_tuple = VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
-            std::apply([&](auto... applyArgs) { *((RETURN*)ret) = func(*applyArgs...); }, args_tuple);
-        }
-    };
-
-    // static function call no return
-    template<typename... ARGS>
-    struct CallStaticFunctionImpl<void, ARGS...>
-    {
-        static void Call(void(*func)(ARGS...), void* obj, void* ret, std::span<void*> args)
-        {
-            ETI_ASSERT(ret == nullptr, "call function that return void should have ret arg to nullptr");
-            auto args_tuple = VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
-            std::apply([&](auto... applyArgs) { func(*applyArgs...); }, args_tuple);
-
-        }
-    };
-
-    // static function call switch
-    template<typename RETURN, typename... ARGS>
-    void CallFunction(RETURN(*func)(ARGS...), void* obj, void* ret, std::span<void*> args)
-    {
-        ETI_ASSERT(sizeof...(ARGS) == args.size(), "invalid size of args");
-        ETI_ASSERT(obj == nullptr, "call static function should have obj to nullptr");
-        CallStaticFunctionImpl<RETURN, ARGS...>::Call(func, obj, ret, args);
-    }
-
-    // member function call
-
-    // member function call with return value
-    template<typename OBJECT, typename RETURN, typename... ARGS>
-    struct CallMemberFunctionImpl
-    {
-        static void Call(RETURN(OBJECT::* func)(ARGS...), void* obj, void* ret, std::span<void*> args)
-        {
-            ETI_ASSERT(ret != nullptr, "internal error");
-            auto args_tuple = VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
-            std::apply([&](auto... applyArgs) { *((RETURN*)ret) = ((OBJECT*)obj->*func)(*applyArgs...); }, args_tuple);
-
-        }
-    };
-
-    // member function call void return
-    template<typename OBJECT, typename... ARGS>
-    struct CallMemberFunctionImpl<OBJECT, void, ARGS...>
-    {
-        static void Call(void(OBJECT::* func)(ARGS...), void* obj, void* ret, std::span<void*> args)
-        {
-            ETI_ASSERT(ret == nullptr, "internal error");
-            auto args_tuple = VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
-            std::apply([&](auto... applyArgs) { ((OBJECT*)obj->*func)(*applyArgs...); }, args_tuple);
-        }
-    };
-
-    // member function call switch
-    template<typename OBJECT, typename RETURN, typename... ARGS>
-    void CallFunction(RETURN(OBJECT::* func)(ARGS...), void* obj, void* ret, std::span<void*> args)
-    {
-        ETI_ASSERT(sizeof...(ARGS) == args.size(), "invalid size of args");
-        ETI_ASSERT(obj != nullptr, "internal error");
-        CallMemberFunctionImpl<OBJECT, RETURN, ARGS...>::Call(func, obj, ret, args);
-    }
-
-    // utility to know at compile time if a T have static method : const Type& GetTypeStatic()
-    //
-    // ex: if constexpr (HasStaticGetTypeStatic<T>) {...}
-    template<typename T>
-    struct HasStaticGetTypeStaticImpl
-    {
-
-    private:
-
-        template<typename _T>
-        static constexpr auto Check(_T*)
-            -> typename std::is_same<decltype(_T::GetTypeStatic()), const Type&>::type
-        {
-            return {};
-        }
-
-        template<typename>
-        static constexpr std::false_type Check(...)
-        {
-            return {};
-        }
-
-        typedef decltype(Check<T>(nullptr)) type;
-
-    public:
-
-        static constexpr bool value = type::value;
-    };
-
-    template<typename T>
-    static constexpr bool HasStaticGetTypeStatic = HasStaticGetTypeStaticImpl<T>::value;
-
-    template<typename T>
-    static std::function<void(void* /* dst */)> GetConstruct()
-    {
-        if constexpr (std::is_default_constructible_v<T>)
-            return [](void* dst) { new (dst) T(); };
-        else
-            return {};
-    }
-
-    template<typename T>
-    static std::function<void(void* /* src */, void* /* dst */)> GetCopyConstruct()
-    {
-        if constexpr (std::is_copy_constructible_v<T>)
-            return [](void* src, void* dst) { new (dst) T(*(T*)src); };
-        else
-            return {};
-    }
-
-    template<typename T>
-    static std::function<void(void* /* src */, void* /* dst */)> GetMoveConstruct()
-    {
-        if constexpr (std::is_default_constructible_v<T>)
-            return [](void* src, void* dst) { new (dst) T(std::move(*(T*)src)); };
-        else
-            return {};
-    }
-
-    template<typename T>
-    static std::function<void(void* /* dst */)> GetDestruct()
-    {
-        return [](void* dst) { ((T*)dst)->~T(); };
-    }
-
-#pragma endregion
 
     enum class Kind : std::uint8_t
     {
@@ -463,7 +532,7 @@ namespace eti
         }
     }
 
-    // store information about type and it's modifier
+    // Declaration, store information about type and it's modifier
     struct Declaration
     {
         const Type& Type;
@@ -472,14 +541,14 @@ namespace eti
         bool IsConst = false;
     };
 
-    // variable, used for function args, property...
+    // Variable, used for function args, property...
     struct Variable
     {
         std::string_view Name;
         Declaration Declaration;
     };
 
-    // member variable of class/struct
+    // Property: member variable of class/struct
     struct Property
     {
         Variable Variable;
@@ -501,7 +570,7 @@ namespace eti
         void Get(OBJECT& obj, T& value) const;
     };
 
-    // method of class/struct
+    // Method: method and static method of class/struct
     struct Method
     {
         std::string_view Name;
@@ -529,7 +598,7 @@ namespace eti
         void CallStaticMethod(RETURN* ret, ARGS... args) const;
     };
 
-    // Type, eti core type, represent runtime type info about <T>
+    // Type, core eti type, represent runtime type information about any T
     struct Type
     {
         std::string_view Name;
@@ -550,241 +619,57 @@ namespace eti
         bool operator==(const Type& other) const { return Id == other.Id; }
         bool operator!=(const Type& other) const { return !(*this == other); }
 
-        const Property* GetProperty(std::string_view name) const
-        {
-            auto it = std::ranges::find_if(Properties, [name](const Property& it) { return it.Variable.Name == name; });
-            return (it != Properties.end()) ? &(*it) : nullptr;
-        }
-
-        const Property* GetProperty(TypeId propertyId) const
-        {
-            auto it = std::ranges::find_if(Properties, [propertyId](const Property& it) { return it.PropertyId == propertyId; });
-            return (it != Properties.end()) ? &(*it) : nullptr;
-        }
-
-        const Method* GetMethod(std::string_view name) const
-        {
-            auto it = std::ranges::find_if(Methods, [name](const Method& it) { return it.Name == name; });
-            return (it != Methods.end()) ? &(*it) : nullptr;
-        }
-
-        const Method* GetMethod(TypeId methodId) const
-        {
-            auto it = std::ranges::find_if(Methods, [methodId](const Method& it) { return it.MethodId == methodId; });
-            return (it != Methods.end()) ? &(*it) : nullptr;
-        }
-
         bool HaveConstruct() const { return Construct != nullptr; }
         bool HaveCopyConstruct() const { return CopyConstruct != nullptr; }
         bool HaveMove() const { return MoveConstruct != nullptr; }
         bool HaveDestroy() const { return Destruct != nullptr; }
 
-        template<typename T>
-        T* New() const
-        {
-            ETI_ASSERT(IsA(TypeOf<T>(), *this), "try to call Type::New with non compatible type");
-            ETI_ASSERT(HaveConstruct(), "try to call Type::New on Type without Construct");
-            void* memory = _aligned_malloc(Size, Align);
-            ETI_ASSERT(memory, "out of memory on Type::New call");
-            Construct(memory);
-            return static_cast<T*>(memory);
-        }
+        const Property* GetProperty(std::string_view name) const;
+        const Property* GetProperty(TypeId propertyId) const;
+        const Method* GetMethod(std::string_view name) const;
+        const Method* GetMethod(TypeId methodId) const;
 
         template<typename T>
-        T* NewCopy(const T& other) const
-        {
-            ETI_ASSERT(IsA(TypeOf<T>(), *this), "try to call Type::New with non compatible type");
-            ETI_ASSERT(HaveCopyConstruct(), "try to call Type::New on Type without Construct");
-            void* memory = _aligned_malloc(Size, Align);
-            ETI_ASSERT(memory, "out of memory on Type::New call");
-            CopyConstruct((void*) & other, memory);
-            return static_cast<T*>(memory);
-        }
+        T* New() const;
 
         template<typename T>
-        void Delete(T* ptr) const
-        {
-            ETI_ASSERT(IsA(TypeOf<T>(), *this), "try to call Type::Delete with non compatible type");
-            ETI_ASSERT(HaveDestroy(), "try to call Type::Delete on Type without Destroy");
-            // support null delete
-            if (ptr == nullptr)
-                return;
-            Destruct(ptr);
-        }
+        T* NewCopy(const T& other) const;
+
+        template<typename T>
+        void Delete(T* ptr) const;
 
         template<typename FROM, typename TO>
-        void Move(FROM& from, TO& to) const
-        {
-            ETI_ASSERT(TypeOf<FROM>().Id == TypeOf<TO>().Id, "Move should be call using same type");
-            ETI_ASSERT(HaveMove(), "try to call Type::Move on Type without MoveConstruct");
-            MoveConstruct(&from, &to);
-        }
+        void Move(FROM& from, TO& to) const;
     };
 
-
-
-#pragma region internal forwards
-
-    //internal forwards
-    namespace internal
-    {
-
-        //
-        // Declaration
-
-        template <typename T>
-        static Declaration MakeDeclaration();
-
-        //
-        // Variable
-
-        static Variable MakeVariable(std::string_view name, ::eti::Declaration declaration);
-
-        template<typename T>
-        const Variable* GetVariableInstance(std::string_view name);
-
-        template<typename... ARGS>
-        std::span<Variable> GetVariableInstances();
-
-        //
-        // Methods
-
-        template<typename RETURN, typename... ARGS>
-        const Variable* GetFunctionReturn(RETURN(*func)(ARGS...));
-
-        // Member method
-        template<typename OBJECT, typename RETURN, typename... ARGS>
-        const Variable* GetFunctionReturn(RETURN(OBJECT::* func)(ARGS...));
-
-        // Static method
-        template<typename RETURN, typename... ARGS>
-        std::span<Variable> GetFunctionVariables(RETURN(*func)(ARGS...));
-
-        // Member method
-        template<typename OBJECT, typename RETURN, typename... ARGS>
-        std::span<Variable> GetFunctionVariables(RETURN(OBJECT::* func)(ARGS...));
-
-        // Method
-        static Method MethodMake(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return = nullptr, std::span<const Variable> arguments = {});
-
-        //
-        // Property
-
-        template <typename T>
-        static Property MakeProperty(std::string_view name, size_t offset, std::vector<std::shared_ptr<Attribute>>&& attributes = {});
-
-        //
-        // Type
-
-        template<typename T>
-        static const Type MakeType(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {});
-
-        template<typename T>
-        Type GetTypeInstance(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {});
-    }
-
-#pragma endregion internal forwards
-
-    template<typename... Args>
-    std::span<const Type*> TypesOf();
-
+    // default impl of TypeOfImpl::GetTypeStatic(), should be specialized
+    // undeclared type (not using ETI_* macro automatically fallback here as Kind::Unknown type
     template<typename T>
     struct TypeOfImpl
     {
-        static const Type& GetTypeStatic()
-        {
-            // default create an Unknown type
-            static Type type = internal::MakeType<T>(Kind::Unknown, nullptr, {}, {}, {});
-            return type;
-        }
+        static const Type& GetTypeStatic();
     };
-
-    // use static const Type& T::GetTypeStatic(){...} if available
-    template<typename T>
-    const Type& OwnerGetType()
-    {
-        if constexpr (HasStaticGetTypeStatic<T>)
-            return T::GetTypeStatic();
-        else
-            return TypeOfImpl<RawType<T>>::template GetTypeStatic();
-    }
-
-    template<typename T>
-    const Type& TypeOf()
-    {
-        static_assert(IsCompleteType<T>, "Type must be completely declared, missing include ?");
-        return OwnerGetType<T>();
-    }
-
-    // TypeOfForward
-    //  allow get type on forward decl type, may return Kind == Forward
-    template<typename T>
-    const Type& TypeOfForward()
-    {
-        //static_assert(IsCompleteType<T>, "Type must be complete declared, missing include ?");
-        return OwnerGetType<T>();
-    }
-
-    template<typename... ARGS>
-    std::span<const Type*> TypesOf()
-    {
-        static const Type* types[] = { &TypeOfForward<ARGS>()... };
-        return std::span<const Type*>(types, sizeof...(ARGS));
-    }
 
     // IsA
 
-    constexpr bool IsA(const Type& type, const Type& base)
-    {
-        const Type* cur = &type;
-        while (cur != nullptr)
-        {
-            if (*cur == base)
-                return true;
-            cur = cur->Parent;
-        }
-        return false;
-    }
+    constexpr bool IsA(const Type& type, const Type& base);
 
     template<typename BASE, typename T>
-    bool IsA(const T& instance)
-    {
-        static_assert(IsCompleteType<BASE>, "Base type must be completely declared, missing include ?");
-        static_assert(IsCompleteType<T>, "Type must be completely declared, missing include ?");
-        return IsA(instance.GetType(), TypeOf<BASE>());
-    }
+    bool IsA(const T& instance);
 
     template<typename T, typename BASE>
-    constexpr bool IsATyped()
-    {
-        static_assert(IsCompleteType<BASE>, "Base type must be completely declared, missing include ?");
-        static_assert(IsCompleteType<T>, "Type must be completely declared, missing include ?");
-        return IsA(TypeOf<T>(), TypeOf<BASE>());
-    }
+    constexpr bool IsATyped();
 
     // Cast
 
     template<typename BASE, typename T>
-    BASE* Cast(T* instance)
-    {
-        static_assert(IsCompleteType<BASE>, "Base type must be completely declared, missing include ?");
-        static_assert(IsCompleteType<T>, "Type must be completely declared, missing include ?");
-
-        if (instance == nullptr)
-            return nullptr;
-        if (IsA<BASE>(*instance))
-            return static_cast<BASE*>(instance);
-        return nullptr;
-    }
+    BASE* Cast(T* instance);
 
     template<typename BASE, typename T>
-    const BASE* Cast(const T* instance)
-    {
-        return Cast<BASE, T>(const_cast<T>(instance));
-    }
+    const BASE* Cast(const T* instance);
 }
 
-// macros fun!
+#pragma region Macros
 
 #define ETI_PROPERTIES(...) __VA_ARGS__
 
@@ -801,12 +686,12 @@ namespace eti
 
 #define ETI_METHOD(NAME, ...) \
     ::eti::internal::MethodMake(#NAME, \
-    ::eti::IsMethodStatic<decltype(&Self::NAME)>, \
-    ::eti::IsMethodConst<decltype(&Self::NAME)>, \
+    ::eti::utils::IsMethodStatic<decltype(&Self::NAME)>, \
+    ::eti::utils::IsMethodConst<decltype(&Self::NAME)>, \
     TypeOf<Self>(), \
     [](void* obj, void* _return, std::span<void*> args) \
     { \
-        ::eti::CallFunction(&NAME, obj, _return, args); \
+        ::eti::utils::CallFunction(&NAME, obj, _return, args); \
     }, \
     ::eti::internal::GetFunctionReturn(&NAME), \
     ::eti::internal::GetFunctionVariables(&NAME))
@@ -888,7 +773,6 @@ namespace eti
 #define ETI_POD(TYPE) \
     ETI_TYPE_IMPL(TYPE, ::eti::Kind::Pod, nullptr, {})
 
-
 #define ETI_TEMPLATE_1_IMPL(TYPE) \
     namespace eti \
     {  \
@@ -909,7 +793,7 @@ namespace eti
     namespace eti \
     { \
         template<> \
-        constexpr auto GetTypeNameImpl<RawType<T>>() \
+        constexpr auto GetTypeNameImpl<::eti::utils::RawType<T>>() \
         { \
             return ::std::string_view(#NAME); \
         } \
@@ -957,60 +841,12 @@ namespace eti
 //    }; 
 //}
 
-// Attribute
+#pragma endregion
+
+
+// ETI Impl
 namespace eti
 {
-    class Attribute
-    {
-        ETI_BASE(Attribute, ETI_PROPERTIES(), ETI_METHODS())
-    public:
-        Attribute() {}
-        virtual ~Attribute() {}
-
-        template<typename... ARGS>
-        static std::vector<std::shared_ptr<Attribute>> GetAttributes(ARGS... args)
-        {
-            return { std::make_shared<ARGS>(args)... };
-        }
-    };
-
-    template <typename T>
-    const T* Property::GetAttribute() const
-    {
-        for (const std::shared_ptr<Attribute>& a : Attributes)
-        {
-            if (IsA<T>(*a))
-                return Cast<T>(a.get());
-        }
-        return nullptr;
-    }
-
-    template <typename T>
-    const T* Property::HaveAttribute() const
-    {
-        return GetAttribute<T>() != nullptr;
-    }
-
-    template <typename OBJECT, typename T>
-    void Property::Set(OBJECT& obj, const T& value) const
-    {
-        // ETI_ASSERT(IsA(obj, *Parent)); todo
-        ETI_ASSERT(Variable.Declaration.Type == TypeOf<T>(), "invalid type");
-        T* ptr = (T*)((char*)&obj + Offset);
-        *ptr = value;
-    }
-
-    template <typename OBJECT, typename T>
-    void Property::Get(OBJECT& obj, T& value) const
-    {
-        // ETI_ASSERT(IsA(obj, *Parent)); todo
-        ETI_ASSERT(Variable.Declaration.Type == TypeOf<T>(), "invalid type");
-        T* ptr = (T*)((char*)&obj + Offset);
-        value = *ptr;
-    }
-
-    // Method Impl
-
 #pragma region internal impl
 
     namespace internal
@@ -1092,7 +928,7 @@ namespace eti
             {
                 ::eti::internal::MakeVariable(name, ::eti::internal::MakeDeclaration<T>()),
                 offset,
-                GetStringHash(name),
+                utils::GetStringHash(name),
                 std::move(attributes)
             };
         }
@@ -1105,7 +941,7 @@ namespace eti
             return
             {
                 name,
-                GetStringHash(name),
+                utils::GetStringHash(name),
                 isStatic,
                 isConst,
                 function,
@@ -1121,7 +957,7 @@ namespace eti
         {
             if constexpr (std::is_void<T>::value == false)
             {
-                if  constexpr (IsCompleteType<T>)
+                if  constexpr (utils::IsCompleteType<T>)
                 {
                     return
                     {
@@ -1131,10 +967,10 @@ namespace eti
                         sizeof(T),
                         alignof(T),
                         parent,
-                        GetConstruct<T>(),
-                        GetCopyConstruct<T>(),
-                        GetMoveConstruct<T>(),
-                        GetDestruct<T>(),
+                        utils::GetConstruct<T>(),
+                        utils::GetCopyConstruct<T>(),
+                        utils::GetMoveConstruct<T>(),
+                        utils::GetDestruct<T>(),
                         properties,
                         methods,
                         templates
@@ -1186,14 +1022,61 @@ namespace eti
         {
             static Type type = internal::MakeType<T>(kind, parent, properties, methods, templates);
             // type may be Forward type, in this case update it on demand
-            if (type.Kind == Kind::Forward && IsCompleteType<T>)
+            if (type.Kind == Kind::Forward && utils::IsCompleteType<T>)
                 type = internal::MakeType<T>(kind, parent, properties, methods, templates);
 
             return type;
         }
+
+        template<typename... ARGS>
+        std::span<const Type*> GetTypeInstances()
+        {
+            static const Type* types[] = { &TypeOfForward<ARGS>()... };
+            return std::span<const Type*>(types, sizeof...(ARGS));
+        }
+
+        template<typename T>
+        const Type& OwnerGetType()
+        {
+            if constexpr (utils::HaveGetTypeStatic<T>)
+                return T::GetTypeStatic();
+            else
+                return TypeOfImpl<utils::RawType<T>>::template GetTypeStatic();
+        }
+
     }
 
-#pragma endregion internal impl
+#pragma endregion
+
+#pragma region Property Impl
+
+    template <typename T>
+    const T* Property::HaveAttribute() const
+    {
+        return GetAttribute<T>() != nullptr;
+    }
+
+    template <typename OBJECT, typename T>
+    void Property::Set(OBJECT& obj, const T& value) const
+    {
+        // ETI_ASSERT(IsA(obj, *Parent)); todo
+        ETI_ASSERT(Variable.Declaration.Type == TypeOf<T>(), "invalid type");
+        T* ptr = (T*)((char*)&obj + Offset);
+        *ptr = value;
+    }
+
+    template <typename OBJECT, typename T>
+    void Property::Get(OBJECT& obj, T& value) const
+    {
+        // ETI_ASSERT(IsA(obj, *Parent)); todo
+        ETI_ASSERT(Variable.Declaration.Type == TypeOf<T>(), "invalid type");
+        T* ptr = (T*)((char*)&obj + Offset);
+        value = *ptr;
+    }
+
+#pragma endregion
+
+#pragma region Method Impl
 
     template <typename T>
     const T* Method::GetAttribute() const
@@ -1215,12 +1098,6 @@ namespace eti
         return true;
     }
 
-    template <typename... ARGS>
-    std::vector<void*> BuildArgs(ARGS... args)
-    {
-        return { args... };
-    }
-
     template <typename OWNER, typename RETURN, typename... ARGS>
     void Method::CallMethod(OWNER& owner, RETURN* ret, ARGS... args) const
     {
@@ -1231,7 +1108,7 @@ namespace eti
 
         //ETI_ASSERT(IsValidArgs<ARGS...>(), "invalid arguments calling method: %s::%s()", Parent->Name, Name);
 
-        std::vector<void*> voidArgs = BuildArgs(args...);
+        std::vector<void*> voidArgs = utils::GetVoidPtrFromArgs(args...);
 
         Function(&owner, ret, voidArgs);
 
@@ -1247,10 +1124,187 @@ namespace eti
 
         //ETI_ASSERT(IsValidArgs<ARGS...>(), "invalid arguments calling method: %s::%s()", Parent->Name, Name);
 
-        std::vector<void*> voidArgs = BuildArgs(args...);
+        std::vector<void*> voidArgs = utils::GetVoidPtrFromArgs(args...);
 
         Function(nullptr, ret, voidArgs);
     }
+
+#pragma endregion
+
+#pragma region Attribute Impl
+
+    inline const Property* Type::GetProperty(std::string_view name) const
+    {
+        auto it = std::ranges::find_if(Properties, [name](const Property& it) { return it.Variable.Name == name; });
+        return (it != Properties.end()) ? &(*it) : nullptr;
+    }
+
+    inline const Property* Type::GetProperty(TypeId propertyId) const
+    {
+        auto it = std::ranges::find_if(Properties, [propertyId](const Property& it) { return it.PropertyId == propertyId; });
+        return (it != Properties.end()) ? &(*it) : nullptr;
+    }
+
+    inline const Method* Type::GetMethod(std::string_view name) const
+    {
+        auto it = std::ranges::find_if(Methods, [name](const Method& it) { return it.Name == name; });
+        return (it != Methods.end()) ? &(*it) : nullptr;
+    }
+
+    inline const Method* Type::GetMethod(TypeId methodId) const
+    {
+        auto it = std::ranges::find_if(Methods, [methodId](const Method& it) { return it.MethodId == methodId; });
+        return (it != Methods.end()) ? &(*it) : nullptr;
+    }
+
+    template<typename T>
+    T* Type::New() const
+    {
+        ETI_ASSERT(IsA(TypeOf<T>(), *this), "try to call Type::New with non compatible type");
+        ETI_ASSERT(HaveConstruct(), "try to call Type::New on Type without Construct");
+        void* memory = _aligned_malloc(Size, Align);
+        ETI_ASSERT(memory, "out of memory on Type::New call");
+        Construct(memory);
+        return static_cast<T*>(memory);
+    }
+
+    template<typename T>
+    T* Type::NewCopy(const T& other) const
+    {
+        ETI_ASSERT(IsA(TypeOf<T>(), *this), "try to call Type::New with non compatible type");
+        ETI_ASSERT(HaveCopyConstruct(), "try to call Type::New on Type without Construct");
+        void* memory = _aligned_malloc(Size, Align);
+        ETI_ASSERT(memory, "out of memory on Type::New call");
+        CopyConstruct((void*) & other, memory);
+        return static_cast<T*>(memory);
+    }
+
+    template<typename T>
+    void Type::Delete(T* ptr) const
+    {
+        ETI_ASSERT(IsA(TypeOf<T>(), *this), "try to call Type::Delete with non compatible type");
+        ETI_ASSERT(HaveDestroy(), "try to call Type::Delete on Type without Destroy");
+        // support null delete
+        if (ptr == nullptr)
+            return;
+        Destruct(ptr);
+    }
+
+    template<typename FROM, typename TO>
+    void Type::Move(FROM& from, TO& to) const
+    {
+        ETI_ASSERT(TypeOf<FROM>().Id == TypeOf<TO>().Id, "Move should be call using same type");
+        ETI_ASSERT(HaveMove(), "try to call Type::Move on Type without MoveConstruct");
+        MoveConstruct(&from, &to);
+    }
+
+#pragma endregion
+
+#pragma region eti impl
+
+    // default impl of TypeOfImpl::GetTypeStatic(), should be specialized
+    // undeclared type (not using ETI_* macro automatically fallback here as Kind::Unknown type
+    template<typename T>
+    const Type& TypeOfImpl<T>::GetTypeStatic()
+    {
+            static Type type = internal::MakeType<T>(Kind::Unknown, nullptr, {}, {}, {});
+            return type;
+    }
+
+    template<typename T>
+    const Type& TypeOf()
+    {
+        static_assert(utils::IsCompleteType<T>, "Type must be completely declared, missing include ?");
+        return internal::OwnerGetType<T>();
+    }
+
+    template<typename T>
+    const Type& TypeOfForward()
+    {
+        return internal::OwnerGetType<T>();
+    }
+
+    inline constexpr bool IsA(const Type& type, const Type& base)
+    {
+        const Type* cur = &type;
+        while (cur != nullptr)
+        {
+            if (*cur == base)
+                return true;
+            cur = cur->Parent;
+        }
+        return false;
+    }
+
+    template<typename BASE, typename T>
+    bool IsA(const T& instance)
+    {
+        static_assert(utils::IsCompleteType<BASE>, "Base type must be completely declared, missing include ?");
+        static_assert(utils::IsCompleteType<T>, "Type must be completely declared, missing include ?");
+        return IsA(instance.GetType(), TypeOf<BASE>());
+    }
+
+    template<typename T, typename BASE>
+    constexpr bool IsATyped()
+    {
+        static_assert(utils::IsCompleteType<BASE>, "Base type must be completely declared, missing include ?");
+        static_assert(utils::IsCompleteType<T>, "Type must be completely declared, missing include ?");
+        return IsA(TypeOf<T>(), TypeOf<BASE>());
+    }
+
+    template<typename BASE, typename T>
+    BASE* Cast(T* instance)
+    {
+        static_assert(utils::IsCompleteType<BASE>, "Base type must be completely declared, missing include ?");
+        static_assert(utils::IsCompleteType<T>, "Type must be completely declared, missing include ?");
+
+        if (instance == nullptr)
+            return nullptr;
+        if (IsA<BASE>(*instance))
+            return static_cast<BASE*>(instance);
+        return nullptr;
+    }
+
+    template<typename BASE, typename T>
+    const BASE* Cast(const T* instance)
+    {
+        return Cast<BASE, T>(const_cast<T>(instance));
+    }
+
+#pragma endregion
+
+#pragma region Attribute
+
+    // Attribute decl and impl at the end, sinec it's using type information
+    class Attribute
+    {
+        ETI_BASE(Attribute, ETI_PROPERTIES(), ETI_METHODS())
+    public:
+        Attribute() {}
+        virtual ~Attribute() {}
+
+        template<typename... ARGS>
+        static std::vector<std::shared_ptr<Attribute>> GetAttributes(ARGS... args);
+    };
+
+    template<typename... ARGS>
+    std::vector<std::shared_ptr<Attribute>> Attribute::GetAttributes(ARGS... args)
+    {
+        return { std::make_shared<ARGS>(args)... };
+    }
+
+    template <typename T>
+    const T* Property::GetAttribute() const
+    {
+        for (const std::shared_ptr<Attribute>& a : Attributes)
+        {
+            if (IsA<T>(*a))
+                return Cast<T>(a.get());
+        }
+        return nullptr;
+    }
+
+#pragma endregion
 }
 
 #if ETI_TRIVIAL_POD
