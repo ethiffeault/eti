@@ -17,7 +17,7 @@ Support:
 
 ## Introduction
 
-Using eti is straightforward, simple usage look like:
+Using eti is straightforward, simple usage:
 ```
 using namespace eti;
 
@@ -33,15 +33,17 @@ class Foo : public Object
 
 class Doo : public Object
 {
-    ETI_CLASS_SLIM(Foo, Object)
+    ETI_CLASS_SLIM(Doo, Object)
 };
 
 void main()
 {
     Foo foo;
     Doo doo;
+
     // output: For is Object ? true
     std::count << "For is Object ? " << (IsA<Object>(foo) ? "true" : "false");   
+
     // output: Doo is Foo ? false
     std::count << "Doo is Foo ? " << (IsA<Foo>(doo) ? "true" : "false");
 }
