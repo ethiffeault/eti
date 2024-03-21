@@ -19,7 +19,7 @@ Support:
 
 Using eti is straightforward, simple usage look like:
 ```
-#include <eti/eti.h>
+using namespace eti;
 
 class Object
 {
@@ -40,13 +40,13 @@ void main()
 {
     Foo foo;
     Doo doo;
-    std::count << "For is Object ?" << (IsA<Object>(foo) ? "true" : "false");   // true
-    std::count << "Doo is Foo ?" << (IsA<Foo>(doo) ? "true" : "false");         // false
+    // output: For is Object ? true
+    std::count << "For is Object ? " << (IsA<Object>(foo) ? "true" : "false");   
+    // output: Doo is Foo ? false
+    std::count << "Doo is Foo ? " << (IsA<Foo>(doo) ? "true" : "false");
 }
 ```
-
 more complex:
-
 ```
 using namespace eti;
 
@@ -80,11 +80,11 @@ void main()
     const Type& type = TypeOf<Point>();
     // set value using property
     {
-
         const Property* propertyX = type.GetProperty("X");
         Point p{ 1, 1 };
         propertyX->Set(p, 2);
-        // stout: p.x = 2
+
+        // output: p.x = 2
         std::cout << "p.x = " << p.X << std::endl;       
     }
     // call SetX
@@ -93,7 +93,8 @@ void main()
         Point p{ 1, 1 };
         int value = 101;
         set->CallMethod(p, (void*)nullptr, &value);
-        // stout: p.x = 101
+
+        // output: p.x = 101
         std::cout << "p.x = " << p.X << std::endl;       
     }
     // call static method Add
@@ -103,7 +104,8 @@ void main()
         Point p2{ 2, 2 };
         Point result;
         add->CallStaticMethod(&result, &p1, &p2);
-        // stout: p1 + p2 = {3, 3}
+
+        // output: p1 + p2 = {3, 3}
         std::cout << "p1 + p2 = {" << result.X << ", " << result.Y << "}" << std::endl; 
     }
 }
