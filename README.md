@@ -1,18 +1,18 @@
 # eti
-Efficient Type Information in c++ 
+Extended Type Information for c++ 
 
-Efficient rtti implementation that doesn't require c++ enable rtti. This lib is one header only without any external dependencies.
+rtti implementation that doesn't require c++ enable rtti. This lib is one header only without any external dependencies.
 
 Support:
 * IsA
 * Cast
-* New, NewCopy, Move and Delete
+* Type
 * POD
 * Struct
 * Class
 * Properties
-* Methods (member and static)
-* Attributes (on types, properties and methods)
+* Methods
+* Attributes
 * Repository
 
 ## Introduction
@@ -112,13 +112,28 @@ void main()
     }
 }
 ```
-
 ## Type
+Core type of eti, Type define all aspect of a given type T
+```
+     Type
+    {
+        Name;
+        Id;
+        Kind;
+        Size;
+        Align;
+        Parent;
+        Construct;
+        CopyConstruct;
+        MoveConstruct;
+        Destruct;
+        Properties;
+        Methods;
+        Templates;
+    }
+```
 ## IsA
 ## Cast
-## New
-## NewCopy
-## Move
 ## POD
 ## Struct
 ## Class
@@ -273,8 +288,7 @@ To change default behavior this lib provide 2 ways, one is to declare #define be
 
 * config file:
 
-  #define ETI_CONFIG_HEADER 1 in <eti/eti.h>
-  create "eti_config.h" using config defines
+  #define ETI_CONFIG_HEADER 1 in <eti/eti.h> and create "eti_config.h" with all config defines.
 
 list of available config #define can be found  at beginning of <eti/eti.h> (see comment for documentation)
 
@@ -287,4 +301,4 @@ list of available config #define can be found  at beginning of <eti/eti.h> (see 
 
 ## External
 
-eti use doctest for unittests: https://github.com/doctest/doctest 
+eti use great doctest framework: https://github.com/doctest/doctest 
