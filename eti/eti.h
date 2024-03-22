@@ -161,7 +161,6 @@ namespace eti
         template<typename T>
         static constexpr bool IsPtrConst = IsPtrConstImpl<T>::value;
 
-
         // IsRefConstImpl
 
         template<typename T>
@@ -292,6 +291,7 @@ namespace eti
             }
         };
 
+
         // static function call no return
         template<typename... ARGS>
         struct CallStaticFunctionImpl<void, ARGS...>
@@ -301,7 +301,6 @@ namespace eti
                 ETI_ASSERT(ret == nullptr, "call function that return void should have ret arg to nullptr");
                 auto args_tuple = VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
                 std::apply([&](auto... applyArgs) { func(*applyArgs...); }, args_tuple);
-
             }
         };
 
@@ -1155,11 +1154,35 @@ namespace eti
         return GetAttribute<T>() != nullptr;
     }
 
-    template <typename... ARGS>
-    bool Method::IsValidArgs()
+
+    // Arguments validation
+    template<typename T>
+    void ValidateArgument(const Variable& argument, int index)
     {
-        // todo, validate each args using Arguments
-        return true;
+        // T : provided arg
+        // argument : function arguments
+
+        if (argument.Declaration.IsPtr || argument.Declaration.IsRef)
+        {
+            ETI_ASSERT(IsA(TypeOf<T>(), argument.Declaration.Type), "argument " << index << " must be of type: " << argument.Declaration.Type.Name);
+        }
+        else
+        {
+            ETI_ASSERT(TypeOf<T>() == argument.Declaration.Type, "argument " << index << " must be of type: " << argument.Declaration.Type.Name);
+        }
+    }
+
+    template<typename... Ts, std::size_t... Is>
+    void ValidateArgumentsForEach(std::span<const Variable> arguments, std::index_sequence<Is...>)
+    {
+        (ValidateArgument<Ts>(arguments[Is], Is), ...);
+    }
+
+    template<typename... Args>
+    void ValidateArguments(std::span<const Variable> arguments)
+    {
+        ETI_ASSERT(arguments.size() == sizeof...(Args), "argument count missmatch, method need " << variables.size() << ", " << sizeof...(Args) << " provided");
+        ValidateArgumentsForEach<Args...>(arguments, std::index_sequence_for<Args...>{});
     }
 
     template <typename OWNER, typename RETURN, typename... ARGS>
@@ -1169,6 +1192,8 @@ namespace eti
             ETI_ASSERT(Return->Declaration.Type.Kind == Kind::Void, "cannot provide return value on method returning void: %s::%s()", Parent->Name, Name);
         else
             ETI_ASSERT(Return->Declaration.Type.Kind != Kind::Void, "missing return value on method with return: %s::%s()", Parent->Name, Name);
+
+        ValidateArguments<ARGS...>(Arguments);
 
         //ETI_ASSERT(IsValidArgs<ARGS...>(), "invalid arguments calling method: %s::%s()", Parent->Name, Name);
 
@@ -1390,6 +1415,9 @@ namespace eti
             case Access::Unknown:
                 return "unknown";
         }
+
+        ETI_INTERNAL_ASSERT(false, "GetAccessName not implemented for this enum value");
+        return "";
     }
 
     class Accessibility : public eti::PropertyAttribute

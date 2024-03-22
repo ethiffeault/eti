@@ -35,14 +35,14 @@ using namespace eti;
 ////////////////////////////////////////////////////////////////////////////////
 namespace test_01
 {
-    struct Foo{};
+    struct Foo {};
 
     TEST_CASE("test_01")
     {
         std::string fooTypeName(GetTypeName<Foo>());
         REQUIRE(fooTypeName == "struct test_01::Foo");
 
-        TypeId fooNameHash =  ETI_HASH_FUNCTION(GetTypeName<Foo>());
+        TypeId fooNameHash = ETI_HASH_FUNCTION(GetTypeName<Foo>());
 
         TypeId fooTypeId = GetTypeId<Foo>();
         REQUIRE(fooTypeId == fooNameHash);
@@ -95,8 +95,8 @@ namespace test_04
         ETI_BASE(Object, ETI_PROPERTIES(), ETI_METHODS())
 
     public:
-        Object(){}
-        virtual ~Object(){}
+        Object() {}
+        virtual ~Object() {}
     };
 
     TEST_CASE("test_04")
@@ -119,8 +119,8 @@ namespace test_05
         ETI_BASE(Object, ETI_PROPERTIES(), ETI_METHODS())
 
     public:
-        Object(){}
-        virtual ~Object(){}
+        Object() {}
+        virtual ~Object() {}
     };
 
     class Foo : public Object
@@ -128,8 +128,8 @@ namespace test_05
         ETI_CLASS(Foo, Object, ETI_PROPERTIES(), ETI_METHODS())
 
     public:
-        Foo(){}
-        ~Foo() override{}
+        Foo() {}
+        ~Foo() override {}
     };
 
     TEST_CASE("test_05")
@@ -171,7 +171,7 @@ namespace test_05
             REQUIRE(IsATyped<Foo, Object>());
 
             REQUIRE(!IsATyped<Object, Foo>());
-            REQUIRE(IsATyped<Foo, Foo>());            
+            REQUIRE(IsATyped<Foo, Foo>());
         }
     }
 }
@@ -223,7 +223,7 @@ namespace test_06
 
         int* ptrInt = nullptr;
     };
-    
+
 
     TEST_CASE("test_06")
     {
@@ -354,19 +354,19 @@ namespace test_07
         const int& iConstRef = i;
         int* iPtr = nullptr;
         const int* iConstPtr = nullptr;
-        int const * iPtrConst = nullptr;
+        int const* iPtrConst = nullptr;
 
-        std::string_view iName          = GetTypeName<decltype(i)>();
-        std::string_view iRefName       = GetTypeName<decltype(iRef)>();
-        std::string_view iConstRefName  = GetTypeName<decltype(iConstRef)>();
-        std::string_view iPtrName       = GetTypeName<decltype(iPtr)>();
-        std::string_view iConstPtrName  = GetTypeName<decltype(iConstPtr)>();
-        std::string_view iPtrConstName  = GetTypeName<decltype(iPtrConst)>();
+        std::string_view iName = GetTypeName<decltype(i)>();
+        std::string_view iRefName = GetTypeName<decltype(iRef)>();
+        std::string_view iConstRefName = GetTypeName<decltype(iConstRef)>();
+        std::string_view iPtrName = GetTypeName<decltype(iPtr)>();
+        std::string_view iConstPtrName = GetTypeName<decltype(iConstPtr)>();
+        std::string_view iPtrConstName = GetTypeName<decltype(iPtrConst)>();
 
-        REQUIRE(iName         == "i32");
-        REQUIRE(iRefName      == "i32");
+        REQUIRE(iName == "i32");
+        REQUIRE(iRefName == "i32");
         REQUIRE(iConstRefName == "i32");
-        REQUIRE(iPtrName      == "i32");
+        REQUIRE(iPtrName == "i32");
         REQUIRE(iConstPtrName == "i32");
         REQUIRE(iPtrConstName == "i32");
     }
@@ -388,7 +388,7 @@ namespace test_08
             ETI_METHODS()
         )
 
-        int i = 0;
+            int i = 0;
         float f = 0.0f;
         int* ptr = nullptr;
         std::vector<float> fv;
@@ -425,14 +425,14 @@ namespace test_09
 {
     struct Foo
     {
-        ETI_STRUCT(Foo, 
-            ETI_PROPERTIES(), 
+        ETI_STRUCT(Foo,
+            ETI_PROPERTIES(),
             ETI_METHODS(
                 ETI_METHOD(GetI),
                 ETI_METHOD(SetI)
             ))
 
-        int GetI()
+            int GetI()
         {
             return i;
         }
@@ -465,7 +465,7 @@ namespace test_09
             std::vector<void*> args;
             int value = 99;
             args.push_back(&value);
-            
+
             method->Function(&foo, nullptr, args);
             REQUIRE(foo.i == value);
         }
@@ -480,12 +480,12 @@ namespace test_10
         ETI_STRUCT(Foo,
             ETI_PROPERTIES
             (
-                ETI_PROPERTY(i, Accessibility(Access::Private) ),
-            ),
+                ETI_PROPERTY(i, Accessibility(Access::Private)),
+                ),
             ETI_METHODS()
         )
 
-        int i = 0;
+            int i = 0;
     };
 
     TEST_CASE("test_09")
@@ -523,7 +523,7 @@ namespace test_11
     {
         ETI_STRUCT_SLIM(Foo)
 
-        static constexpr int IntValue = 1;
+            static constexpr int IntValue = 1;
 
         Foo()
         {
@@ -572,7 +572,7 @@ namespace test_11
 
         {
             ResetCounters();
-            
+
             REQUIRE(construct == 0);
             REQUIRE(copyConstruct == 0);
             REQUIRE(moveConstruct == 0);
@@ -598,8 +598,8 @@ namespace test_12
 
     struct Foo
     {
-        void MemberFunction(){}
-        static void StaticFunction(){}
+        void MemberFunction() {}
+        static void StaticFunction() {}
     };
 
 
@@ -620,11 +620,11 @@ namespace test_13
     struct Foo
     {
         ETI_STRUCT(
-            Foo, 
+            Foo,
             ETI_PROPERTIES(),
-            ETI_METHODS( ETI_METHOD( MemberFunction ) ) )
+            ETI_METHODS(ETI_METHOD(MemberFunction)))
 
-        void MemberFunction(){}
+            void MemberFunction() {}
     };
 
     TEST_CASE("test_13")
@@ -643,17 +643,17 @@ namespace test_14
     struct Foo
     {
         ETI_STRUCT(
-            Foo, 
-                ETI_PROPERTIES
-                (
-                    ETI_PROPERTY(intValue),
-                    ETI_PROPERTY(intConstValue),
-                    ETI_PROPERTY(intPtr),
-                    ETI_PROPERTY(intConstPtr),
+            Foo,
+            ETI_PROPERTIES
+            (
+                ETI_PROPERTY(intValue),
+                ETI_PROPERTY(intConstValue),
+                ETI_PROPERTY(intPtr),
+                ETI_PROPERTY(intConstPtr),
                 ),
-                ETI_METHODS())
+            ETI_METHODS())
 
-        int intValue;
+            int intValue;
         const int intConstValue;
 
         int* intPtr;
@@ -663,7 +663,7 @@ namespace test_14
     TEST_CASE("test_14")
     {
         int i = 0;
-        Foo foo = { i, i, &i, &i};
+        Foo foo = { i, i, &i, &i };
 
         {
             const Property* p = TypeOf<Foo>().GetProperty("intValue");
@@ -720,10 +720,10 @@ namespace test_15
                 ETI_PROPERTY(intConstValue),
                 ETI_PROPERTY(intPtr),
                 ETI_PROPERTY(intConstPtr),
-            ),
+                ),
             ETI_METHODS())
 
-        int intValue = 0;
+            int intValue = 0;
         const int intConstValue = 1;
 
         int* intPtr = nullptr;
@@ -741,7 +741,7 @@ namespace test_15
         const int* intConstPtr = nullptr;
 
         int someValue = 101;
-        
+
         Foo foo = { intValue, intConstValue, intPtr, intConstPtr };
 
         {
@@ -801,7 +801,7 @@ namespace test_16
             ETI_PROPERTY(ObjectPtr),
             ETI_PROPERTY(FooPtr),
             ETI_PROPERTY(DooPtr),
-        ), 
+            ),
             ETI_METHODS())
 
     public:
@@ -810,8 +810,8 @@ namespace test_16
         Foo* FooPtr = nullptr;
         Doo* DooPtr = nullptr;
 
-        Object(){}
-        virtual ~Object(){}
+        Object() {}
+        virtual ~Object() {}
     };
 
     class Foo : public Object
@@ -824,7 +824,7 @@ namespace test_16
         ETI_CLASS_SLIM(Foo, Object)
     };
 
-    TEST_CASE("test_15")
+    TEST_CASE("test_16")
     {
         Object object;
         Foo foo;
@@ -852,5 +852,103 @@ namespace test_16
         REQUIRE(obj == object.ObjectPtr);
     }
 }
+
+namespace test_17
+{
+    class Foo;
+    class Doo;
+
+    class Object
+    {
+        ETI_BASE
+        (
+            Object,
+            ETI_PROPERTIES(),
+            ETI_METHODS
+            (
+                ETI_METHOD(GetName),
+                ETI_METHOD(Add)
+            )
+        )
+
+    public:
+        virtual ~Object() {}
+
+        virtual std::string_view GetName() { return "my name is Object"; }
+        virtual double Add(int n0, float n1) { return n0 + n1; }
+    };
+
+    class Foo : public Object
+    {
+        ETI_CLASS
+        (
+            Foo, Object,
+            ETI_PROPERTIES(),
+            ETI_METHODS
+            (
+                ETI_METHOD(GetName)
+            )
+        )
+
+    public:
+        ~Foo() override {}
+        std::string_view GetName() override { return "my name is Foo"; }
+        double Add(int n0, float n1) override { return n0 + n1 + 1; }
+    };
+
+    class Doo : public Object
+    {
+        ETI_CLASS
+        (
+            Doo, Object,
+            ETI_PROPERTIES(),
+            ETI_METHODS
+            (
+                ETI_METHOD(GetName)
+            )
+        )
+
+    public:
+        ~Doo() override {}
+
+
+        std::string_view GetName() override { return "my name is Doo"; }
+        double Add(int n0, float n1) override { return n0 + n1 + 1; }
+    };
+
+    TEST_CASE("test_17")
+    {
+        Object obj;
+        Foo foo;
+        Doo doo;
+
+        {
+            const Method* getNameMethod = TypeOf<Object>().GetMethod("GetName");
+
+            std::string_view name;
+            getNameMethod->CallMethod(obj, &name);
+            REQUIRE(name == "my name is Object");
+
+            getNameMethod->CallMethod(foo, &name);
+            REQUIRE(name == "my name is Foo");
+
+            getNameMethod->CallMethod(doo, &name);
+            REQUIRE(name == "my name is Doo");
+        }
+
+        {
+            const Method* addMethod = TypeOf<Object>().GetMethod("Add");
+            double result = 0.0f;
+            int p0 = 1;
+            float p1 = 2.0f;
+            // todo: make this work!
+            //addMethod->CallMethod(obj, &result, p0, p1);
+            //REQUIRE(result == 1);
+        }
+
+
+    }
+}
+
 
 #endif // #if !ETI_SLIM_MODE
