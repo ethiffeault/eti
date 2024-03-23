@@ -867,15 +867,21 @@ namespace test_17
             ETI_METHODS
             (
                 ETI_METHOD(GetName),
-                ETI_METHOD(Add)
+                ETI_METHOD(Add),
+                ETI_METHOD(GetIPtr)
             )
         )
 
     public:
         virtual ~Object() {}
 
+        static double Add(int n0, float n1) { return n0 + n1; }
+
+        int* GetIPtr() { return &i; }
+        int i = 12;
+
+    protected:
         virtual std::string_view GetName() { return "my name is Object"; }
-        virtual double Add(int n0, float n1) { return n0 + n1; }
     };
 
     class Foo : public Object
@@ -884,16 +890,14 @@ namespace test_17
         (
             Foo, Object,
             ETI_PROPERTIES(),
-            ETI_METHODS
-            (
-                ETI_METHOD(GetName)
-            )
+            ETI_METHODS()
         )
 
     public:
         ~Foo() override {}
+
+    protected:
         std::string_view GetName() override { return "my name is Foo"; }
-        double Add(int n0, float n1) override { return (double)n0 + (double)n1; }
     };
 
     class Doo : public Object
@@ -902,18 +906,14 @@ namespace test_17
         (
             Doo, Object,
             ETI_PROPERTIES(),
-            ETI_METHODS
-            (
-                ETI_METHOD(GetName)
-            )
+            ETI_METHODS()
         )
 
     public:
         ~Doo() override {}
 
-
+    protected:
         std::string_view GetName() override { return "my name is Doo"; }
-        double Add(int p0, float p1) override { return (double)p0 + (double)p1; }
     };
 
     TEST_CASE("test_17")
@@ -940,8 +940,21 @@ namespace test_17
             const Method* addMethod = TypeOf<Object>().GetMethod("Add");
             double result = 0.0f;
             float p1 = 2.0f;
-            addMethod->CallMethod(obj, &result, 1, p1);
+            addMethod->CallStaticMethod(&result, 1, p1);
             REQUIRE((int)result == 3);
+        }
+
+        {
+            const Method* getIPtrMethod = TypeOf<Object>().GetMethod("GetIPtr");
+
+            int* getIPtr = nullptr;
+            getIPtrMethod->CallMethod(foo, &getIPtr);
+
+            int* iPtr = &foo.i;
+            REQUIRE(iPtr == getIPtr);
+
+            *getIPtr = 3;
+            REQUIRE(foo.i == 3);
         }
     }
 }
