@@ -628,6 +628,8 @@ namespace eti
 
         template <typename RETURN, typename... ARGS>
         void CallStaticMethod(RETURN* ret, ARGS... args) const;
+
+        void CallRaw(void* obj, void* ret, std::span<void*> args) const;
     };
 
     // Type, core eti type, represent runtime type information about any T
@@ -708,7 +710,7 @@ namespace eti
 
 #define ETI_PROPERTIES(...) __VA_ARGS__
 
-#define ETI_PROPERTY(NAME, ...) ::eti::internal::MakeProperty<decltype(NAME)>(#NAME, offsetof(Self, NAME), TypeOf<Self>(),  ::eti::PropertyAttribute::GetAttributes(__VA_ARGS__))
+#define ETI_PROPERTY(NAME, ...) ::eti::internal::MakeProperty<decltype(NAME)>(#NAME, offsetof(Self, NAME), TypeOf<Self>(),  ::eti::internal::GetAttributes<PropertyAttribute>(__VA_ARGS__))
 
 #define ETI_PROPERTY_INTERNAL(...) \
     static const std::span<::eti::Property> GetProperties() \
@@ -1083,6 +1085,12 @@ namespace eti
             else
                 return TypeOfImpl<RawType>::template GetTypeStatic();
         }
+
+        template<typename T, typename... ARGS>
+        static std::vector<std::shared_ptr<T>> GetAttributes(ARGS... args)
+        {
+            return { std::make_shared<ARGS>(args)... };
+        }
     }
 
 #pragma endregion
@@ -1162,9 +1170,6 @@ namespace eti
     template<typename T>
     void ValidateArgument(const Variable& argument, int index)
     {
-        // T : provided arg
-        // argument : function arguments
-
         if (argument.Declaration.IsPtr || argument.Declaration.IsRef)
         {
             ETI_ASSERT(IsA(TypeOf<T>(), argument.Declaration.Type), "argument " << index << " must be of type: " << argument.Declaration.Type.Name << ", not " << TypeOf<T>().Name);
@@ -1198,11 +1203,9 @@ namespace eti
 
         ValidateArguments<ARGS...>(Arguments);
 
-        //ETI_ASSERT(IsValidArgs<ARGS...>(), "invalid arguments calling method: %s::%s()", Parent->Name, Name);
-
         std::vector<void*> voidArgs = utils::GetVoidPtrFromArgs(args...);
 
-        Function(&owner, ret, voidArgs);
+        CallRaw(&owner, ret, voidArgs);
 
     }
      
@@ -1214,16 +1217,31 @@ namespace eti
         else
             ETI_ASSERT(Return->Declaration.Type.Kind != Kind::Void, "missing return value on method with return: %s::%s()" << Parent->Name << "::" << Name <<"()");
 
-        //ETI_ASSERT(IsValidArgs<ARGS...>(), "invalid arguments calling method: %s::%s()", Parent->Name, Name);
+        ValidateArguments<ARGS...>(Arguments);
 
         std::vector<void*> voidArgs = utils::GetVoidPtrFromArgs(args...);
 
-        Function(nullptr, ret, voidArgs);
+        CallRaw(nullptr, ret, voidArgs);
+    }
+
+    inline void Method::CallRaw(void* obj, void* ret, std::span<void*> args) const
+    {
+        if (IsStatic)
+            ETI_ASSERT(obj == nullptr, "try to call static method on object instance");
+        else
+            ETI_ASSERT(obj != nullptr, "call member method without object instance");
+
+        if (Return->Declaration.Type.Kind == Kind::Void)
+            ETI_ASSERT(ret == nullptr, "try to call method with no return value, but return argument is not nullptr");
+        else
+            ETI_ASSERT(ret != nullptr, "try to call method with return value, but return argument is nullptr");
+
+        this->Function(obj, ret, args);
     }
 
 #pragma endregion
 
-#pragma region PropertyAttribute Implementation
+#pragma region Type Implementation
 
     inline const Property* Type::GetProperty(std::string_view name) const
     {
@@ -1292,7 +1310,7 @@ namespace eti
 
 #pragma endregion
 
-#pragma region ETI Implementation
+#pragma region Global Implementation
 
     // default impl of TypeOfImpl::GetTypeStatic(), should be specialized
     // undeclared type (not using ETI_* macro automatically fallback here as Kind::Unknown type
@@ -1367,23 +1385,23 @@ namespace eti
 
 #pragma region Attributes
 
-    // PropertyAttribute decl and impl at the end, sinec it's using type information
-    class PropertyAttribute
+    class Attribute
     {
-        ETI_BASE(PropertyAttribute, ETI_PROPERTIES(), ETI_METHODS())
+        ETI_BASE(Attribute, ETI_PROPERTIES(), ETI_METHODS())
     public:
-        PropertyAttribute() {}
-        virtual ~PropertyAttribute() {}
-
-        template<typename... ARGS>
-        static std::vector<std::shared_ptr<PropertyAttribute>> GetAttributes(ARGS... args);
+        Attribute() {}
+        virtual ~Attribute() {}
     };
 
-    template<typename... ARGS>
-    std::vector<std::shared_ptr<PropertyAttribute>> PropertyAttribute::GetAttributes(ARGS... args)
+    // PropertyAttribute decl and impl at the end, sinec it's using type information
+    class PropertyAttribute : public Attribute
     {
-        return { std::make_shared<ARGS>(args)... };
-    }
+        ETI_CLASS(PropertyAttribute, Attribute, ETI_PROPERTIES(), ETI_METHODS())
+    public:
+        PropertyAttribute() {}
+        ~PropertyAttribute() override {}
+
+    };
 
     template <typename T>
     const T* Property::GetAttribute() const
