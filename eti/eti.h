@@ -129,16 +129,11 @@ namespace eti
     struct Property;
     struct Method;
     enum class Kind : std::uint8_t;
-
     class PropertyAttribute;
-
     template<typename T>
     const Type& TypeOf();
-
     template<typename T>
     const Type& TypeOfForward();
-
-    static constexpr std::string_view GetKindName(Kind typeDesc);
 
 #pragma endregion
 
@@ -146,6 +141,7 @@ namespace eti
 
     namespace utils
     {
+
         // RawType<T>
 
         template<typename T>
@@ -222,12 +218,6 @@ namespace eti
 
         template<typename T>
         constexpr bool IsMethodConst = IsMethodConstImpl<T>::value;
-
-        template <typename... ARGS>
-        std::vector<void*> GetVoidPtrFromArgs(const ARGS&... args)
-        {
-            return { ((void*)&args)... };
-        }
 
         // Hash constexpr string_view to constexpr TypeId
         constexpr TypeId HashFNV1WithPrime(const std::string_view str, TypeId hash = ETI_HASH_SEED)
@@ -417,7 +407,7 @@ namespace eti
 
 #pragma endregion
 
-#pragma region Internal
+#pragma region Internal Forward
 
     //internal forwards
     namespace internal
@@ -474,6 +464,10 @@ namespace eti
         template<typename... ARGS>
         std::span<const Type*> GetTypeInstances();
 
+
+        template <typename... ARGS>
+        std::vector<void*> GetVoidPtrFromArgs(const ARGS&... args);
+
         // internal Utils
         // use static const Type& T::GetTypeStatic(){...} if available
         template<typename T>
@@ -482,10 +476,7 @@ namespace eti
 
 #pragma endregion
 
-#pragma region ETI
-
-    // GetTypeName
-    //  return constexpr name for any given types
+#pragma region Global
 
 # if defined __clang__ || defined __GNUC__
     template<typename T>
@@ -610,8 +601,8 @@ namespace eti
     {
         std::string_view Name;
         TypeId MethodId = 0;
-        bool IsStatic = false;
-        bool IsConst = false;
+        bool IsStatic:1 = false;
+        bool IsConst:1 = false;
         std::function<void(void*, void*, std::span<void*>)> Function;
         const Variable* Return;
         std::span<const Variable> Arguments;
@@ -629,7 +620,7 @@ namespace eti
         template <typename RETURN, typename... ARGS>
         void CallStaticMethod(RETURN* ret, ARGS... args) const;
 
-        void CallRaw(void* obj, void* ret, std::span<void*> args) const;
+        void UnSafeCall(void* obj, void* ret, std::span<void*> args) const;
     };
 
     // Type, core eti type, represent runtime type information about any T
@@ -648,7 +639,7 @@ namespace eti
 
         std::span<const Property> Properties;
         std::span<const Method> Methods;
-        std::span<const Type*> Templates;
+        std::span<const Type*> Templates; // todo: implement!
 
         bool operator==(const Type& other) const { return Id == other.Id; }
         bool operator!=(const Type& other) const { return !(*this == other); }
@@ -1076,6 +1067,12 @@ namespace eti
             return std::span<const Type*>(types, sizeof...(ARGS));
         }
 
+        template <typename... ARGS>
+        std::vector<void*> GetVoidPtrFromArgs(const ARGS&... args)
+        {
+            return { ((void*)&args)... };
+        }
+
         template<typename T>
         const Type& OwnerGetType()
         {
@@ -1155,7 +1152,7 @@ namespace eti
     template <typename T>
     const T* Method::GetAttribute() const
     {
-        // not implemented
+        // todo: implement!
         return nullptr;
     }
 
@@ -1203,10 +1200,9 @@ namespace eti
 
         ValidateArguments<ARGS...>(Arguments);
 
-        std::vector<void*> voidArgs = utils::GetVoidPtrFromArgs(args...);
+        std::vector<void*> voidArgs = internal::GetVoidPtrFromArgs(args...);
 
-        CallRaw(&owner, ret, voidArgs);
-
+        UnSafeCall(&owner, ret, voidArgs);
     }
      
     template <typename RETURN, typename... ARGS>
@@ -1219,12 +1215,12 @@ namespace eti
 
         ValidateArguments<ARGS...>(Arguments);
 
-        std::vector<void*> voidArgs = utils::GetVoidPtrFromArgs(args...);
+        std::vector<void*> voidArgs = internal::GetVoidPtrFromArgs(args...);
 
-        CallRaw(nullptr, ret, voidArgs);
+        UnSafeCall(nullptr, ret, voidArgs);
     }
 
-    inline void Method::CallRaw(void* obj, void* ret, std::span<void*> args) const
+    inline void Method::UnSafeCall(void* obj, void* ret, std::span<void*> args) const
     {
         if (IsStatic)
             ETI_ASSERT(obj == nullptr, "try to call static method on object instance");
@@ -1232,9 +1228,9 @@ namespace eti
             ETI_ASSERT(obj != nullptr, "call member method without object instance");
 
         if (Return->Declaration.Type.Kind == Kind::Void)
-            ETI_ASSERT(ret == nullptr, "try to call method with no return value, but return argument is not nullptr");
+            ETI_ASSERT(ret == nullptr, "try to call method with no return value, but provided return argument is not nullptr");
         else
-            ETI_ASSERT(ret != nullptr, "try to call method with return value, but return argument is nullptr");
+            ETI_ASSERT(ret != nullptr, "try to call method with return value, but provided return argument is nullptr");
 
         this->Function(obj, ret, args);
     }
