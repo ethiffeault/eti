@@ -54,10 +54,17 @@
         // Assert and Error
         #include <cassert>
         #include <memory>
-        #define ETI_ASSERT(cond, msg, ...) assert(cond)
-        #define ETI_ERROR(msg) assert(true)
-        #define ETI_INTERNAL_ASSERT(cond, msg, ...) assert(cond)
-        #define ETI_INTERNAL_ERROR(msg) assert(true)
+        #include <iostream>
+        #define ETI_ASSERT(cond, ...) \
+            do { \
+                if (!(cond)) { \
+                    ::std::cerr << __VA_ARGS__ << ::std::endl; \
+                    assert(cond); \
+                } \
+            } while (0)
+        #define ETI_ERROR(msg) ETI_ASSERT(true, msg)
+        #define ETI_INTERNAL_ASSERT(cond, msg) ETI_ASSERT(cond, msg)
+        #define ETI_INTERNAL_ERROR(msg) ETI_ERROR(msg)
     #endif
 
     // TypeId/Hashing
@@ -217,9 +224,9 @@ namespace eti
         constexpr bool IsMethodConst = IsMethodConstImpl<T>::value;
 
         template <typename... ARGS>
-        std::vector<void*> GetVoidPtrFromArgs(ARGS... args)
+        std::vector<void*> GetVoidPtrFromArgs(const ARGS&... args)
         {
-            return { args... };
+            return { ((void*)&args)... };
         }
 
         // Hash constexpr string_view to constexpr TypeId
@@ -290,7 +297,6 @@ namespace eti
                 std::apply([&](auto... applyArgs) { *((RETURN*)ret) = func(*applyArgs...); }, args_tuple);
             }
         };
-
 
         // static function call no return
         template<typename... ARGS>
@@ -616,9 +622,6 @@ namespace eti
 
         template <typename T>
         const T* HaveAttribute() const;
-
-        template <typename... ARGS>
-        bool IsValidArgs();
 
         template <typename OWNER, typename RETURN, typename... ARGS>
         void CallMethod(OWNER& owner, RETURN* ret, ARGS... args) const;
@@ -1105,14 +1108,14 @@ namespace eti
         if (Variable.Declaration.IsPtr)
         {
             ETI_ASSERT(Variable.Declaration.IsPtr && std::is_pointer_v<T>, "try to set a pointer property providing not pointer value");
-            ETI_ASSERT( IsA( TypeOf<T>(), Variable.Declaration.Type ), "bad pointer type: " << IsA(TypeOf<T>().Name << "trying to set ptr of type: " << Variable.Declaration.Type.Name));
+            ETI_ASSERT(IsA( TypeOf<T>(), Variable.Declaration.Type ), "bad pointer type: " << TypeOf<T>().Name << "trying to set ptr of type: " << Variable.Declaration.Type.Name);
             T* ptr = (T*)UnSafeGetPtr(obj);
             *ptr = value;
         }
         else
         {
             ETI_ASSERT(!Variable.Declaration.IsPtr && !std::is_pointer_v<T>, "try to set a value property providing a pointer value");
-            ETI_ASSERT( TypeOf<T>() == Variable.Declaration.Type, "bad value type: " << IsA(TypeOf<T>().Name << "trying to set value of type: " << Variable.Declaration.Type.Name));
+            ETI_ASSERT( TypeOf<T>() == Variable.Declaration.Type, "bad value type: " << TypeOf<T>().Name << "trying to set value of type: " << Variable.Declaration.Type.Name);
             T* ptr = (T*)UnSafeGetPtr(obj);
             *ptr = value;
         }
@@ -1124,14 +1127,14 @@ namespace eti
         if (Variable.Declaration.IsPtr)
         {
             ETI_ASSERT(Variable.Declaration.IsPtr && std::is_pointer_v<T>, "try to set a pointer property providing not pointer value");
-            ETI_ASSERT( IsA( TypeOf<T>(), Variable.Declaration.Type ), "bad pointer type: " << IsA(TypeOf<T>().Name << "trying to set ptr of type: " << Variable.Declaration.Type.Name));
+            ETI_ASSERT( IsA( TypeOf<T>(), Variable.Declaration.Type ), "bad pointer type: " << TypeOf<T>().Name << "trying to set ptr of type: " << Variable.Declaration.Type.Name);
             T* ptr = (T*)UnSafeGetPtr(obj);
             value = *ptr;
         }
         else
         {
             ETI_ASSERT(!Variable.Declaration.IsPtr && !std::is_pointer_v<T>, "try to set a value property providing a pointer value");
-            ETI_ASSERT( TypeOf<T>() == Variable.Declaration.Type, "bad value type: " << IsA(TypeOf<T>().Name << "trying to set value of type: " << Variable.Declaration.Type.Name));
+            ETI_ASSERT( TypeOf<T>() == Variable.Declaration.Type, "bad value type: " << TypeOf<T>().Name << "trying to set value of type: " << Variable.Declaration.Type.Name);
             T* ptr = (T*)UnSafeGetPtr(obj);
             value = *ptr;
         }
@@ -1164,11 +1167,11 @@ namespace eti
 
         if (argument.Declaration.IsPtr || argument.Declaration.IsRef)
         {
-            ETI_ASSERT(IsA(TypeOf<T>(), argument.Declaration.Type), "argument " << index << " must be of type: " << argument.Declaration.Type.Name);
+            ETI_ASSERT(IsA(TypeOf<T>(), argument.Declaration.Type), "argument " << index << " must be of type: " << argument.Declaration.Type.Name << ", not " << TypeOf<T>().Name);
         }
         else
         {
-            ETI_ASSERT(TypeOf<T>() == argument.Declaration.Type, "argument " << index << " must be of type: " << argument.Declaration.Type.Name);
+            ETI_ASSERT(TypeOf<T>() == argument.Declaration.Type, "argument " << index << " must be of type: " << argument.Declaration.Type.Name << ", not " << TypeOf<T>().Name);
         }
     }
 
@@ -1181,7 +1184,7 @@ namespace eti
     template<typename... Args>
     void ValidateArguments(std::span<const Variable> arguments)
     {
-        ETI_ASSERT(arguments.size() == sizeof...(Args), "argument count missmatch, method need " << variables.size() << ", " << sizeof...(Args) << " provided");
+        ETI_ASSERT(arguments.size() == sizeof...(Args), "argument count missmatch, method need " << arguments.size() << ", " << sizeof...(Args) << " provided");
         ValidateArgumentsForEach<Args...>(arguments, std::index_sequence_for<Args...>{});
     }
 
@@ -1189,9 +1192,9 @@ namespace eti
     void Method::CallMethod(OWNER& owner, RETURN* ret, ARGS... args) const
     {
         if (ret == nullptr)
-            ETI_ASSERT(Return->Declaration.Type.Kind == Kind::Void, "cannot provide return value on method returning void: %s::%s()", Parent->Name, Name);
+            ETI_ASSERT(Return->Declaration.Type.Kind == Kind::Void, "cannot provide return value on method returning void: " << Parent->Name << "::" << Name <<"()");
         else
-            ETI_ASSERT(Return->Declaration.Type.Kind != Kind::Void, "missing return value on method with return: %s::%s()", Parent->Name, Name);
+            ETI_ASSERT(Return->Declaration.Type.Kind != Kind::Void, "missing return value on method with return: " << Parent->Name << "::" << Name <<"()");
 
         ValidateArguments<ARGS...>(Arguments);
 
@@ -1207,9 +1210,9 @@ namespace eti
     void Method::CallStaticMethod(RETURN* ret, ARGS... args) const
     {
         if (ret == nullptr)
-            ETI_ASSERT(Return->Declaration.Type.Kind == Kind::Void, "cannot provide return value on method returning void: %s::%s()", Parent->Name, Name);
+            ETI_ASSERT(Return->Declaration.Type.Kind == Kind::Void, "cannot provide return value on method returning void: " << Parent->Name << "::" << Name <<"()");
         else
-            ETI_ASSERT(Return->Declaration.Type.Kind != Kind::Void, "missing return value on method with return: %s::%s()", Parent->Name, Name);
+            ETI_ASSERT(Return->Declaration.Type.Kind != Kind::Void, "missing return value on method with return: %s::%s()" << Parent->Name << "::" << Name <<"()");
 
         //ETI_ASSERT(IsValidArgs<ARGS...>(), "invalid arguments calling method: %s::%s()", Parent->Name, Name);
 

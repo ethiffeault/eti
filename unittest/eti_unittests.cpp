@@ -893,7 +893,7 @@ namespace test_17
     public:
         ~Foo() override {}
         std::string_view GetName() override { return "my name is Foo"; }
-        double Add(int n0, float n1) override { return n0 + n1 + 1; }
+        double Add(int n0, float n1) override { return (double)n0 + (double)n1; }
     };
 
     class Doo : public Object
@@ -913,7 +913,7 @@ namespace test_17
 
 
         std::string_view GetName() override { return "my name is Doo"; }
-        double Add(int n0, float n1) override { return n0 + n1 + 1; }
+        double Add(int p0, float p1) override { return (double)p0 + (double)p1; }
     };
 
     TEST_CASE("test_17")
@@ -939,14 +939,10 @@ namespace test_17
         {
             const Method* addMethod = TypeOf<Object>().GetMethod("Add");
             double result = 0.0f;
-            int p0 = 1;
             float p1 = 2.0f;
-            // todo: make this work!
-            //addMethod->CallMethod(obj, &result, p0, p1);
-            //REQUIRE(result == 1);
+            addMethod->CallMethod(obj, &result, 1, p1);
+            REQUIRE((int)result == 3);
         }
-
-
     }
 }
 

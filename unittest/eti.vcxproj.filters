@@ -12,9 +12,4 @@
     <ClCompile Include="forward\foo.cpp" />
     <ClCompile Include="eti_documentation.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <Filter Include="forward">
-      <UniqueIdentifier>{fc15c677-e7b5-43e9-bea4-a68af3541e8b}</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
 </Project>
