@@ -65,6 +65,7 @@ void main()
     std::cout << "foo isa Doo ? " << IsA<Doo>(foo) << std::endl;
     std::cout << "doo isa Doo ? " << IsA<Doo>(doo) << std::endl;
 }
+```
 output:
 ```
 base isa Base ? 1
