@@ -5,15 +5,25 @@ rtti implementation that doesn't require c++ enable rtti. This lib is one header
 
 # Table of Contents
 [Introduction](#Introduction)
+
 [Type](#Type)
+
 [IsA](#IsA)
+
 [Cast](#Cast)
-[Properties](#Propertie)
+
+[Properties](#Properties)
+
 [Methods](#Methods)
+
 [Attributes](#Attributes)
+
 [Struct](#Struct)
+
 [Class](#Class)
+
 [POD](#POD)
+
 [Repository](#Repository)
 
 # Introduction
