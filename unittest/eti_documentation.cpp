@@ -26,8 +26,6 @@
 
 #include <eti/eti.h>
 
-#if !ETI_SLIM_MODE
-
 using namespace eti;
 using namespace std;
 
@@ -105,9 +103,74 @@ namespace doc_introduction
     }
 }
 
-#endif // #if !ETI_SLIM_MODE
+namespace doc_isa
+{
+    class Base
+    {
+        ETI_BASE_SLIM(Base)
+    };
 
+    class Foo : public Base
+    {
+        ETI_CLASS_SLIM(Foo, Base)
+    };
 
+    class Doo : public Base
+    {
+        ETI_CLASS_SLIM(Doo, Base)
+    };
+
+    TEST_CASE("doc_isa")
+    {
+        Base base;
+        Foo foo;
+        Doo doo;
+        std::cout << "base isa Base ? " << IsA<Base>(base) << std::endl;
+        std::cout << "foo isa Base ? " << IsA<Base>(foo) << std::endl;
+        std::cout << "doo isa Base ? " << IsA<Base>(doo) << std::endl;
+        std::cout << "base isa Foo ? " << IsA<Foo>(base) << std::endl;
+        std::cout << "foo isa Foo ? " << IsA<Foo>(foo) << std::endl;
+        std::cout << "doo isa Foo ? " << IsA<Foo>(doo) << std::endl;
+        std::cout << "base isa Doo ? " << IsA<Doo>(base) << std::endl;
+        std::cout << "foo isa Doo ? " << IsA<Doo>(foo) << std::endl;
+        std::cout << "doo isa Doo ? " << IsA<Doo>(doo) << std::endl;
+    }
+}
+
+namespace doc_cast
+{
+    class Base
+    {
+        ETI_BASE_SLIM(Base)
+    };
+
+    class Foo : public Base
+    {
+        ETI_CLASS_SLIM(Foo, Base)
+    };
+
+    class Doo : public Base
+    {
+        ETI_CLASS_SLIM(Doo, Base)
+    };
+    
+    TEST_CASE("doc_isa")
+    {
+        Base base;
+        Foo foo;
+        Doo doo;
+
+        {
+            Foo* basePtr = Cast<Foo>(&base);
+            std::cout << (basePtr != nullptr ? "valid" : "invalid") << std::endl;
+            Foo* fooPtr = Cast<Foo>(&foo);
+            std::cout << (fooPtr != nullptr ? "valid" : "invalid") << std::endl;
+            // Foo* dooPtr = Cast<Foo>(&doo);  not compile
+            Foo* dooPtr = Cast<Foo>((Base*)& doo);
+            std::cout << (dooPtr != nullptr ? "valid" : "invalid") << std::endl;
+        }
+    }
+}
 ////////////////////////////////////////////////////////////////////////////////
 namespace doc_properties
 {

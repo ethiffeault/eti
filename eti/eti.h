@@ -1456,6 +1456,12 @@ namespace eti
 
 #pragma endregion
 
+    class Object
+    {
+        ETI_BASE_SLIM(Object)
+    public:
+        virtual ~Object(){}
+    };
 }
 
 #if ETI_TRIVIAL_POD

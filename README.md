@@ -4,18 +4,19 @@ Extended Type Information for c++
 rtti implementation that doesn't require c++ enable rtti. This lib is one header only without any external dependencies.
 
 # Table of Contents
-1. [Introduction](#Introduction)
-2. [Cast] (#Cast)
-* Type
-* POD
-* Struct
-* Class
-* Properties
-* Methods
-* Attributes
-* Repository
+[Introduction](#Introduction)
+[Type](#Type)
+[IsA](#IsA)
+[Cast](#Cast)
+[Properties](#Propertie)
+[Methods](#Methods)
+[Attributes](#Attributes)
+[Struct](#Struct)
+[Class](#Class)
+[POD](#POD)
+[Repository](#Repository)
 
-## Introduction
+# Introduction
 
 Using eti is straightforward, simple usage:
 ```
@@ -112,8 +113,7 @@ void main()
     }
 }
 ```
-## Cast
-## Type
+# Type
 Core type of eti, Type define all aspect of a given type T
 ```
      Type
@@ -133,18 +133,173 @@ Core type of eti, Type define all aspect of a given type T
         Templates;          // std::span<const Type*> Templates
     }
 ```
-## IsA
-## Cast
-## POD
-## Struct
-## Class
-## Properties
-Property
-* Access to member variables (public, protected and private)
-* Pointer or value.
-* Support Attributes.
-* Set/Get using reflexion via eti::Property.
+# IsA
+IsA is core feature of eti, (available in slim mode)
+ex:
+```
+    class Base
+    {
+        ETI_BASE_SLIM(Base)
+    };
 
+    class Foo : public Base
+    {
+        ETI_CLASS_SLIM(Foo, Base)
+    };
+
+    class Doo : public Base
+    {
+        ETI_CLASS_SLIM(Doo, Base)
+    };
+
+    TEST_CASE("doc_isa")
+    {
+        Base base;
+        Foo foo;
+        Doo doo;
+        std::cout << "base isa Base ? " << IsA<Base>(base) << std::endl;
+        std::cout << "foo isa Base ? " << IsA<Base>(foo) << std::endl;
+        std::cout << "doo isa Base ? " << IsA<Base>(doo) << std::endl;
+        std::cout << "base isa Foo ? " << IsA<Foo>(base) << std::endl;
+        std::cout << "foo isa Foo ? " << IsA<Foo>(foo) << std::endl;
+        std::cout << "doo isa Foo ? " << IsA<Foo>(doo) << std::endl;
+        std::cout << "base isa Doo ? " << IsA<Doo>(base) << std::endl;
+        std::cout << "foo isa Doo ? " << IsA<Doo>(foo) << std::endl;
+        std::cout << "doo isa Doo ? " << IsA<Doo>(doo) << std::endl;
+    }
+```
+output:
+```
+base isa Base ? 1
+foo isa Base ? 1
+doo isa Base ? 1
+base isa Foo ? 0
+foo isa Foo ? 1
+doo isa Foo ? 0
+base isa Doo ? 0
+foo isa Doo ? 0
+doo isa Doo ? 1
+```
+
+
+# Cast
+dynamic cast of T, when not match, return nullptr or not compile on incompatible type.
+```
+    class Base
+    {
+        ETI_BASE_SLIM(Base)
+    };
+
+    class Foo : public Base
+    {
+        ETI_CLASS_SLIM(Foo, Base)
+    };
+
+    class Doo : public Base
+    {
+        ETI_CLASS_SLIM(Doo, Base)
+    };
+    
+    TEST_CASE("doc_isa")
+    {
+        Base base;
+        Foo foo;
+        Doo doo;
+
+        {
+            Foo* basePtr = Cast<Foo>(&base);
+            std::cout << (basePtr != nullptr ? "valid" : "invalid") << std::endl;
+            Foo* fooPtr = Cast<Foo>(&foo);
+            std::cout << (fooPtr != nullptr ? "valid" : "invalid") << std::endl;
+            // Foo* dooPtr = Cast<Foo>(&doo);  not compile
+            Foo* dooPtr = Cast<Foo>((Base*)& doo);
+            std::cout << (dooPtr != nullptr ? "valid" : "invalid") << std::endl;
+        }
+    }
+```
+output
+```
+invalid
+valid
+invalid
+```
+# POD
+define your own pod type using ETI_POD macro.
+ex:
+```
+    ETI_POD(bool)
+```
+or used named macro ETI_POD_NAMED to specify name
+ex:
+```
+    ETI_POD_NAMED(std::int8_t, i8);
+```
+by default ETI_TRIVIAL_POD is defined to 1, unless you see it to 0, will defined basic pods
+```
+    ETI_POD(bool);
+
+    ETI_POD_NAMED(std::int8_t, i8);
+    ETI_POD_NAMED(std::int16_t, i16);
+    ETI_POD_NAMED(std::int32_t, i32);
+    ETI_POD_NAMED(std::int64_t, i64);
+
+    ETI_POD_NAMED(std::uint8_t, s8);
+    ETI_POD_NAMED(std::uint16_t, s16);
+    ETI_POD_NAMED(std::uint32_t, s32);
+    ETI_POD_NAMED(std::uint64_t, s64);
+
+    ETI_POD_NAMED(std::float_t, f32);
+    ETI_POD_NAMED(std::double_t, f64);
+``
+
+# Struct
+use ETI_STRUCT to define struct, struct are base type, not virtual destructor and no inheritance.
+ex:
+```
+    struct Point
+    {
+        ETI_STRUCT(
+            Point,
+            ETI_PROPERTIES(
+                ETI_PROPERTY(X),
+                ETI_PROPERTY(Y)),
+            ETI_METHODS(
+                ETI_METHOD(SetX),
+                ETI_METHOD(Add)))
+
+        void SetX(int x)
+        {
+            X = x;
+        }
+
+        static Point Add(const Point& p0, const Point& p1)
+        {
+            return { p0.X + p1.X, p0.Y + p1.Y };
+        }
+
+        friend std::ostream& operator<<(std::ostream& os, const Point& obj)
+        {
+            os << "{x = " << obj.X << ", y = " << obj.Y << "}";
+            return os;
+        }
+
+        int X = 0;
+        int Y = 0;
+    };
+```
+# Class
+class are dynamic object with virtual table, aka destructor. eti provide a common class to optionally inherit from with a virtual destructor.
+```
+    class Object
+    {
+        ETI_BASE_SLIM(Object)
+    public:
+        virtual ~Object(){}
+    };
+```
+you can define you own base class as needed.
+
+# Properties
 ```
     Property
     {
