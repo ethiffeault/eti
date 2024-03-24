@@ -39,18 +39,19 @@ namespace doc_introduction
     struct Point
     {
         ETI_STRUCT(
-            Point, 
-            ETI_PROPERTIES( 
-                ETI_PROPERTY( X ), 
-                ETI_PROPERTY( Y ) ),
-            ETI_METHODS( 
-                ETI_METHOD( SetX ), 
-                ETI_METHOD( Add ) ) )
+            Point,
+            ETI_PROPERTIES
+            (
+                ETI_PROPERTY(X)
+            ),
+            ETI_METHODS
+            (
+                ETI_METHOD(SetX),
+                ETI_METHOD(Add)
+            )
+        )
 
-        void SetX(int x)
-        {
-            X = x;
-        }
+        void SetX(int x) { X = x; }
 
         static Point Add(const Point& p0, const Point& p1)
         {
@@ -63,6 +64,8 @@ namespace doc_introduction
 
     TEST_CASE("doc_introduction")
     {
+        std::cout << "doc_introduction" << std::endl;
+
         const Type& type = TypeOf<Point>();
 
         // set value using property
@@ -149,4 +152,64 @@ namespace doc_properties
     //  Init Age is 0
     //  Adult Age is 21
     //  Person::Age member is private of type : i32
+}
+
+namespace doc_methods
+{
+    using namespace eti;
+
+    struct Point
+    {
+        ETI_STRUCT(
+            Point,
+            ETI_PROPERTIES(
+                ETI_PROPERTY(X),
+                ETI_PROPERTY(Y)),
+            ETI_METHODS(
+                ETI_METHOD(SetX),
+                ETI_METHOD(Add)))
+
+        void SetX(int x)
+        {
+            X = x;
+        }
+
+        static Point Add(const Point& p0, const Point& p1)
+        {
+            return { p0.X + p1.X, p0.Y + p1.Y };
+        }
+
+        friend std::ostream& operator<<(std::ostream& os, const Point& obj)
+        {
+            os << "{x = " << obj.X << ", y = " << obj.Y << "}";
+            return os;
+        }
+
+        int X = 0;
+        int Y = 0;
+    };
+
+    TEST_CASE("doc_methods")
+    {
+        std::cout << "doc_methods" << std::endl;
+        const Type& type = TypeOf<Point>();
+
+        {
+            Point p;
+            const Method* setX = type.GetMethod("SetX");
+            setX->CallMethod(p, NoReturn, 1);
+            std::cout << p << endl;
+        }
+
+        {
+            Point p1 = {1, 1};
+            Point p2 = {2, 2};
+            const Method* add = type.GetMethod("Add");
+
+            Point result;
+
+            add->CallStaticMethod(&result, p1, p2);
+            std::cout << p1 << " + " << p2 << " = " << result << endl;
+        }
+    }
 }

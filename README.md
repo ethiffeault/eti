@@ -117,19 +117,19 @@ Core type of eti, Type define all aspect of a given type T
 ```
      Type
     {
-        Name;
-        Id;
-        Kind;
-        Size;
-        Align;
-        Parent;
-        Construct;
-        CopyConstruct;
-        MoveConstruct;
-        Destruct;
-        Properties;
-        Methods;
-        Templates;
+        Name;               // name
+        Id;                 // id ( hash of it's name)
+        Kind;               // kind (Void, Class, Struct, Pod, Template, Unknown or Forward)
+        Size;               // size(T)
+        Align;              // alignof(T)
+        Parent;             // parent if any
+        Construct;          // std::function<void(void* /* dst */)>
+        CopyConstruct;      // std::function<void(void* /* src */, void* /* dst */)>
+        MoveConstruct;      // std::function<void(void* /* src */, void* /* dst */)>
+        Destruct;           // std::function<void(void* /* dst */)>
+        Properties;         // std::span<const Property>
+        Methods;            // std::span<const Method>
+        Templates;          // std::span<const Type*> Templates
     }
 ```
 ## IsA
@@ -147,12 +147,12 @@ Property
 ```
     Property
     {
-        Name;
-        Type;
-        Offset;
-        Parent;
-        PropertyId;
-        Attributes;
+        Name;       // name
+        Type;       // TypeId
+        Offset;     // offset from parent
+        Parent;     // parent Type
+        PropertyId; // id of this property (hash of it's name)
+        Attributes; // all attributes
     }
 ```
 ex:
@@ -209,7 +209,100 @@ for advance usage, Property provide this to get member variable pointer (offset 
 
 
 ## Methods
-wip
+
+```
+Method
+{
+        Name;       // name
+        MethodId;   // id
+        IsStatic;   // static
+        IsConst;    // const
+        Function;   // std::function<void(void*, void*, std::span<void*>)>
+        Return;     // return type, const Variable*
+        Arguments;  // arguments, std::span<const Variable>
+        Parent;     // parent, const Type* Parent
+}
+```
+UnSafeCall is the bare bone way of calling method:
+
+* void UnSafeCall(void* obj, void* ret, std::span<void*> args) const;
+
+when static, obj should be nullptr.
+when void return, ret should be nullptr, or helper eti::NoReturn arg.
+
+that said, when possible, prefer use:
+* void CallMethod(PARENT& owner, RETURN* ret, ARGS... args) const;
+or
+* void CallStaticMethod(RETURN* ret, ARGS... args) const;
+
+when method is void return, use eti::NoReturn like :
+* setX->CallMethod(p, NoReturn, 1);
+
+ex:
+```
+    using namespace eti;
+
+    struct Point
+    {
+        ETI_STRUCT(
+            Point,
+            ETI_PROPERTIES(
+                ETI_PROPERTY(X),
+                ETI_PROPERTY(Y)),
+            ETI_METHODS(
+                ETI_METHOD(SetX),
+                ETI_METHOD(Add)))
+
+        void SetX(int x)
+        {
+            X = x;
+        }
+
+        static Point Add(const Point& p0, const Point& p1)
+        {
+            return { p0.X + p1.X, p0.Y + p1.Y };
+        }
+
+        friend std::ostream& operator<<(std::ostream& os, const Point& obj)
+        {
+            os << "{x = " << obj.X << ", y = " << obj.Y << "}";
+            return os;
+        }
+
+        int X = 0;
+        int Y = 0;
+    };
+
+    TEST_CASE("doc_methods")
+    {
+        std::cout << "doc_methods" << std::endl;
+        const Type& type = TypeOf<Point>();
+
+        {
+            Point p;
+            const Method* setX = type.GetMethod("SetX");
+            setX->CallMethod(p, NoReturn, 1);
+            std::cout << p << endl;
+        }
+
+        {
+            Point p1 = {1, 1};
+            Point p2 = {2, 2};
+            const Method* add = type.GetMethod("Add");
+
+            Point result;
+
+            add->CallStaticMethod(&result, p1, p2);
+            std::cout << p1 << " + " << p2 << " = " << result << endl;
+        }
+    }
+```
+output:
+```
+{x = 1, y = 0}
+{x = 1, y = 1} + {x = 2, y = 2} = {x = 3, y = 3}
+```
+
 ## Attributes
 
 Attribute are supported on Struct, Class, Properties ans Methods

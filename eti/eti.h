@@ -500,6 +500,8 @@ namespace eti
     #pragma error implement GetTypeNameDefault
 #endif
 
+    static constexpr void* NoReturn = nullptr;
+
     // user may specialize this per type to have custom name (be careful to hash clash)
     //  ex: use in ETI_POD_NAMED macro
     template<typename T>
@@ -614,8 +616,8 @@ namespace eti
         template <typename T>
         const T* HaveAttribute() const;
 
-        template <typename OWNER, typename RETURN, typename... ARGS>
-        void CallMethod(OWNER& owner, RETURN* ret, ARGS... args) const;
+        template <typename PARENT, typename RETURN, typename... ARGS>
+        void CallMethod(PARENT& owner, RETURN* ret, ARGS... args) const;
 
         template <typename RETURN, typename... ARGS>
         void CallStaticMethod(RETURN* ret, ARGS... args) const;
@@ -1190,8 +1192,8 @@ namespace eti
         ValidateArgumentsForEach<Args...>(arguments, std::index_sequence_for<Args...>{});
     }
 
-    template <typename OWNER, typename RETURN, typename... ARGS>
-    void Method::CallMethod(OWNER& owner, RETURN* ret, ARGS... args) const
+    template <typename PARENT, typename RETURN, typename... ARGS>
+    void Method::CallMethod(PARENT& owner, RETURN* ret, ARGS... args) const
     {
         if (ret == nullptr)
             ETI_ASSERT(Return->Declaration.Type.Kind == Kind::Void, "cannot provide return value on method returning void: " << Parent->Name << "::" << Name <<"()");
