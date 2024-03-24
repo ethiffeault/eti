@@ -321,7 +321,7 @@ ex:
     };
 ```
 # Class
-class are dynamic object with virtual table, aka destructor. eti provide a common class to optionally inherit from with a virtual destructor.
+class are dynamic object with virtual table, of curse with virtual destructor. eti provide a common class to optionally inherit from with a virtual destructor.
 ```
     class Object
     {
@@ -583,4 +583,4 @@ list of available config #define can be found  at beginning of <eti/eti.h> (see 
 
 ## External
 
-eti use great doctest framework: https://github.com/doctest/doctest 
+eti use awesome great unit tests framework: [doctest](https://github.com/doctest/doctest)
