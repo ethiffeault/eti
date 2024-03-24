@@ -3,9 +3,9 @@ Extended Type Information for c++
 
 rtti implementation that doesn't require c++ enable rtti. This lib is one header only without any external dependencies.
 
-Support:
-* IsA
-* Cast
+# Table of Contents
+1. [Introduction](#Introduction)
+2. [Cast] (#Cast)
 * Type
 * POD
 * Struct
@@ -112,6 +112,7 @@ void main()
     }
 }
 ```
+## Cast
 ## Type
 Core type of eti, Type define all aspect of a given type T
 ```
