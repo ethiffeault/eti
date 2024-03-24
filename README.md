@@ -81,7 +81,7 @@ base isa Doo ? 0
 foo isa Doo ? 0
 doo isa Doo ? 1
 ```
-```
+
 more complex:
 ```
 using namespace eti;
