@@ -260,7 +260,7 @@ by default ETI_TRIVIAL_POD is defined to 1, unless you see it to 0, will defined
 
     ETI_POD_NAMED(std::float_t, f32);
     ETI_POD_NAMED(std::double_t, f64);
-``
+```
 
 # Struct
 use ETI_STRUCT to define struct, struct are base type, not virtual destructor and no inheritance.
