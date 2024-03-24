@@ -49,15 +49,37 @@ class Doo : public Object
 
 void main()
 {
+    Base base;
     Foo foo;
     Doo doo;
-
-    // output: Foo is a Object ? true
-    std::count << "Foo is a Object ? " << ( IsA<Object>(foo) ? "true" : "false" );
-
-    // output: Doo is a Foo ? false
-    std::count << "Doo is a Foo ? " << ( IsA<Foo>(doo) ? "true" : "false" );
+    std::cout << "base isa Base ? " << IsA<Base>(base) << std::endl;
+    std::cout << "base type name is: " << TypeOf<Base>().Name << std::endl;
+    std::cout << "foo isa Base ? " << IsA<Base>(foo) << std::endl;
+    std::cout << "foo type name is: " << TypeOf<Foo>().Name << std::endl;
+    std::cout << "doo isa Base ? " << IsA<Base>(doo) << std::endl;
+    std::cout << "doo type name is: " << TypeOf<Doo>().Name << std::endl;
+    std::cout << "base isa Foo ? " << IsA<Foo>(base) << std::endl;
+    std::cout << "foo isa Foo ? " << IsA<Foo>(foo) << std::endl;
+    std::cout << "doo isa Foo ? " << IsA<Foo>(doo) << std::endl;
+    std::cout << "base isa Doo ? " << IsA<Doo>(base) << std::endl;
+    std::cout << "foo isa Doo ? " << IsA<Doo>(foo) << std::endl;
+    std::cout << "doo isa Doo ? " << IsA<Doo>(doo) << std::endl;
 }
+output:
+```
+base isa Base ? 1
+base type name is: class Base
+foo isa Base ? 1
+foo type name is: class Foo
+doo isa Base ? 1
+doo type name is: class Doo
+base isa Foo ? 0
+foo isa Foo ? 1
+doo isa Foo ? 0
+base isa Doo ? 0
+foo isa Doo ? 0
+doo isa Doo ? 1
+```
 ```
 more complex:
 ```
@@ -263,7 +285,7 @@ by default ETI_TRIVIAL_POD is defined to 1, unless you see it to 0, will defined
 ```
 
 # Struct
-use ETI_STRUCT to define struct, struct are base type, not virtual destructor and no inheritance.
+use ETI_STRUCT to define struct, struct are base type, no virtual destructor and no inheritance.
 ex:
 ```
     struct Point

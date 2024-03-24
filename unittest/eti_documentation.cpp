@@ -103,31 +103,34 @@ namespace doc_introduction
     }
 }
 
+class Base
+{
+    ETI_BASE_SLIM(Base)
+};
+
+class Foo : public Base
+{
+    ETI_CLASS_SLIM(Foo, Base)
+};
+
+class Doo : public Base
+{
+    ETI_CLASS_SLIM(Doo, Base)
+};
+
 namespace doc_isa
 {
-    class Base
-    {
-        ETI_BASE_SLIM(Base)
-    };
-
-    class Foo : public Base
-    {
-        ETI_CLASS_SLIM(Foo, Base)
-    };
-
-    class Doo : public Base
-    {
-        ETI_CLASS_SLIM(Doo, Base)
-    };
-
     TEST_CASE("doc_isa")
     {
         Base base;
         Foo foo;
         Doo doo;
         std::cout << "base isa Base ? " << IsA<Base>(base) << std::endl;
+        std::cout << "base type name is: " << TypeOf<Base>().Name << std::endl;
         std::cout << "foo isa Base ? " << IsA<Base>(foo) << std::endl;
+        std::cout << "foo type name is: " << TypeOf<Foo>().Name << std::endl;
         std::cout << "doo isa Base ? " << IsA<Base>(doo) << std::endl;
+        std::cout << "doo type name is: " << TypeOf<Doo>().Name << std::endl;
         std::cout << "base isa Foo ? " << IsA<Foo>(base) << std::endl;
         std::cout << "foo isa Foo ? " << IsA<Foo>(foo) << std::endl;
         std::cout << "doo isa Foo ? " << IsA<Foo>(doo) << std::endl;
