@@ -29,6 +29,8 @@ rtti implementation that doesn't require c++ enable rtti. This lib is one header
 
 [SlimMode](#SlimMode)
 
+[UnitTests](#UnitTests)
+
 [Todo](#Todo)
 
 [External](#External)
@@ -581,6 +583,14 @@ Available in slim mode:
 * ETI_STRUCT
 * ETI_POD
 * ETI_POD_EXT
+
+## UnitTests
+
+see ./unittest/eti_unittests.cpp
+
+Compile:
+* eti_unittest.sln
+* clang++ -I . -std=c++20 -o unittest.exe ./unittest/eti_unittests.cpp
 
 ## Todo
 
