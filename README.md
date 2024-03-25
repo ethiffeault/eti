@@ -497,44 +497,35 @@ output:
 Attribute are supported on Struct, Class, Properties ans Methods
 
 * Struct
-
-  wip
-
 * Class
-
-  wip
-
 * Properties
-
-  base class: eti::PropertyAttribute
-
 * Methods
 
-  wip
-
-
-All kind of Attribute may be user defined like this:
+Attribute may be user defined like this:
 ```
-    class Accessibility : public eti::PropertyAttribute
+    class Documentation : public eti::Attribute
     {
-        ETI_CLASS_SLIM(Accessibility, PropertyAttribute)
+        ETI_CLASS_SLIM(Documentation, Attribute)
 
     public:
 
-        Accessibility(Access access)
+        Documentation(string_view documentation)
         {
-            Access = access;
+            Documentation = documentation;
         }
 
-        Access Access = Access::Unknown;
+        string_view Documentation;
     };
 
-    // use it on any property, ex:
-    ETI_PROPERTY(Age, Accessibility(Access::Private), Documentation("Age..."), ...)
+    // use it on any property, method and type:
+    ETI_PROPERTY(Age, Documentation("Age doc..."))
+    ETI_METHOD(GetAge, Documentation("Age getter..."))
+    ETI_CLASS(Foo, Base, Documentation("Foo class..."))
 
     // query it:
-    const Property* ageProperty = type.GetProperty("Age");
-    Access access = ageProperty->GetAttribute<Accessibility>()->Access;
+    const Documentation* doc = TypeOf<Foo>().GetProperty<Documentation>();
+    // note: return nullptr if not exist
+    std::cout << doc->Documentation;
 ```    
 
 ## Repository
@@ -542,7 +533,7 @@ All kind of Attribute may be user defined like this:
 To enable Repository use config : 
 * #define ETI_REPOSITORY 1
 
-Repository contain type mapping from TypeId to Type and from Name to Type. Practical for stuff like serialization...
+Repository contain type mapping from TypeId to Type and from Name to Type. Practical for pattern like serialization.
 
 todo: more doc...
 
