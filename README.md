@@ -153,8 +153,15 @@ void main()
 ```
 # Type
 Core type of eti, Type define all aspect of a given type T
+
+Getting Type from any given type use: 
 ```
-     Type
+const Type& fooType = eti::TypeOf<Foo>();
+const Type& intType = eti::TypeOf<int>();
+```
+
+```
+    Type
     {
         Name;               // name
         Id;                 // id ( hash of it's name)
@@ -174,6 +181,13 @@ Core type of eti, Type define all aspect of a given type T
 ```
 # IsA
 IsA is core feature of eti, (available in slim mode)
+
+usage:
+```
+    IsA<Foo>(instance);
+    IsA<Foo, Doo>();
+```
+
 ```
     class Base
     {
@@ -221,6 +235,11 @@ doo isa Doo ? 1
 
 # Cast
 dynamic cast of T, when not match, return nullptr or not compile on incompatible type.
+usage:
+```
+    Foo* basePtr = Cast<Foo>(&base);
+```
+
 ```
     class Base
     {
@@ -265,7 +284,7 @@ define your own pod type using ETI_POD macro.
 ```
     ETI_POD(bool)
 ```
-or used named macro ETI_POD_NAMED to specify name
+or used named pod using ETI_POD_NAMED to specify name
 ```
     ETI_POD_NAMED(std::int8_t, i8);
 ```
@@ -322,7 +341,7 @@ use ETI_STRUCT to define struct, struct are base type, no virtual destructor and
     };
 ```
 # Class
-class are dynamic object with virtual table, of curse with virtual destructor. eti provide a common class to optionally inherit from with a virtual destructor.
+class are dynamic object with virtual table, with virtual destructor. eti provide an optional common base class:
 ```
     class Object
     {
@@ -334,7 +353,7 @@ class are dynamic object with virtual table, of curse with virtual destructor. e
 you can define you own base class as needed.
 
 # Properties
-Property wrap member variable of a class/struct
+Property wrap member variables of a class/struct
 ```
     Property
     {
@@ -416,7 +435,7 @@ Call look like:
 or
 * void CallStaticMethod(RETURN* ret, ARGS... args) const;
 
-when method is void return, use eti::NoReturn like :
+when method return void, use eti::NoReturn like :
 * setX->CallMethod(p, NoReturn, 1);
 
 UnSafeCall is the bare bone way of calling method:
@@ -487,7 +506,6 @@ output:
 ```
 
 ## Attributes
-
 Attribute are supported on Struct, Class, Properties and Methods
 
 * Struct
@@ -532,7 +550,6 @@ Repository contain type mapping from TypeId to Type and from Name to Type. Pract
 todo: more doc...
 
 ## Slim
-
 Support slim mode when only basic type information are needed (no properties, no functions, no attributes, ...)
 
 Available in slime mode: 
