@@ -858,7 +858,8 @@ namespace test_17
                 ETI_METHOD(GetName),
                 ETI_METHOD(Add),
                 ETI_METHOD(GetIPtr, Accessibility(Access::Public))
-            )
+            ),
+            Accessibility(Access::Public)
         )
 
     public:
@@ -948,6 +949,14 @@ namespace test_17
             const Accessibility* accessibility= getIPtrMethod->GetAttribute<Accessibility>();
             REQUIRE(accessibility != nullptr);
             REQUIRE(accessibility->Access == Access::Public);
+        }
+
+        {
+            const Type& objType = TypeOf<Object>();
+            const Accessibility* accessibility = objType.GetAttribute<Accessibility>();
+            REQUIRE(accessibility != nullptr);
+            REQUIRE(accessibility->Access == Access::Public);
+
         }
     }
 }

@@ -457,10 +457,10 @@ namespace eti
         // Type
 
         template<typename T>
-        static const Type MakeType(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {});
+        static const Type MakeType(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {}, std::vector<std::shared_ptr<Attribute>> attributes = {});
 
         template<typename T>
-        Type GetTypeInstance(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {});
+        Type GetTypeInstance(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {}, std::vector<std::shared_ptr<Attribute>>&& attributes = {});
 
         template<typename... ARGS>
         std::span<const Type*> GetTypeInstances();
@@ -650,6 +650,7 @@ namespace eti
         std::span<const Property> Properties;
         std::span<const Method> Methods;
         std::span<const Type*> Templates; // todo: implement!
+        std::vector<std::shared_ptr<Attribute>> Attributes;
 
         bool operator==(const Type& other) const { return Id == other.Id; }
         bool operator!=(const Type& other) const { return !(*this == other); }
@@ -675,6 +676,12 @@ namespace eti
 
         template<typename FROM, typename TO>
         void Move(FROM& from, TO& to) const;
+
+        template <typename T>
+        const T* GetAttribute() const;
+
+        template <typename T>
+        const T* HaveAttribute() const;
     };
 
     // default impl of TypeOfImpl::GetTypeStatic(), should be specialized
@@ -745,30 +752,38 @@ namespace eti
         return methods; \
     }
 
-#define ETI_BASE(BASE, PROPERTIES, METHODS) \
+#define ETI_BASE(BASE, PROPERTIES, METHODS, ...) \
     public: \
         virtual const ::eti::Type& GetType() const { return GetTypeStatic(); } \
-        ETI_INTERNAL_TYPE_DECL(BASE, nullptr, ::eti::Kind::Class) \
+        ETI_INTERNAL_TYPE_DECL(BASE, nullptr, ::eti::Kind::Class, __VA_ARGS__) \
         ETI_INTERNAL_PROPERTY(PROPERTIES) \
         ETI_INTERNAL_METHOD(METHODS) \
     private:
 
-#define ETI_BASE_SLIM(CLASS) \
+#define ETI_BASE_SLIM(CLASS, ...) \
     ETI_BASE(CLASS, ETI_PROPERTIES(), ETI_METHODS())
 
-#define ETI_CLASS(CLASS, BASE, PROPERTIES, METHODS) \
+#define ETI_CLASS(CLASS, BASE, PROPERTIES, METHODS, ...) \
     public: \
         using Super = BASE; \
         const ::eti::Type& GetType() const override { return GetTypeStatic(); }\
-        ETI_INTERNAL_TYPE_DECL(CLASS, &::eti::TypeOf<BASE>(), ::eti::Kind::Class) \
+        ETI_INTERNAL_TYPE_DECL(CLASS, &::eti::TypeOf<BASE>(), ::eti::Kind::Class, __VA_ARGS__) \
         ETI_INTERNAL_PROPERTY(PROPERTIES) \
         ETI_INTERNAL_METHOD(METHODS) \
     private: 
 
-#define ETI_CLASS_SLIM(CLASS, BASE) \
+#define ETI_CLASS_SLIM(CLASS, BASE, ...) \
     ETI_CLASS(CLASS, BASE, ETI_PROPERTIES(), ETI_METHODS())
 
-#define ETI_INTERNAL_TYPE_DECL(TYPE, PARENT, KIND) \
+#define ETI_STRUCT(STRUCT, PROPERTIES, METHODS, ...) \
+    ETI_INTERNAL_TYPE_DECL(STRUCT, nullptr, ::eti::Kind::Struct, __VA_ARGS__) \
+    ETI_INTERNAL_PROPERTY(PROPERTIES) \
+    ETI_INTERNAL_METHOD(METHODS)
+
+#define ETI_STRUCT_SLIM(STRUCT, ...) \
+    ETI_STRUCT(STRUCT, ETI_PROPERTIES(), ETI_METHODS(), __VA_ARGS__)
+
+#define ETI_INTERNAL_TYPE_DECL(TYPE, PARENT, KIND, ...) \
     using Self = TYPE; \
     static constexpr ::eti::TypeId TypeId = ::eti::GetTypeId<TYPE>();\
     static const ::eti::Type& GetTypeStatic()  \
@@ -778,18 +793,10 @@ namespace eti
         if (initializing == false) \
         { \
             initializing = true; \
-            type = ::eti::internal::template GetTypeInstance<TYPE>(KIND, PARENT, TYPE::GetProperties(), TYPE::GetMethods(), {}); \
+            type = ::eti::internal::template GetTypeInstance<TYPE>(KIND, PARENT, TYPE::GetProperties(), TYPE::GetMethods(), {}, ::eti::internal::GetAttributes<Attribute>(__VA_ARGS__)); \
         } \
         return type; \
     }
-
-#define ETI_STRUCT(STRUCT, PROPERTIES, METHODS) \
-    ETI_INTERNAL_TYPE_DECL(STRUCT, nullptr, ::eti::Kind::Struct) \
-    ETI_INTERNAL_PROPERTY(PROPERTIES) \
-    ETI_INTERNAL_METHOD(METHODS)
-
-#define ETI_STRUCT_SLIM(STRUCT) \
-    ETI_STRUCT(STRUCT, ETI_PROPERTIES(), ETI_METHODS())
 
 #define ETI_INTERNAL_TYPE_IMPL(TYPE, KIND, PARENT, PROPERTY_VARIABLES) \
     namespace eti \
@@ -994,7 +1001,7 @@ namespace eti
         }
 
         template<typename T>
-        static const Type MakeType(::eti::Kind kind, const Type* parent, std::span<const Property> properties /*= {}*/, std::span<const Method> methods /*= {}*/, std::span<const Type*> templates /*= {}*/)
+        static const Type MakeType(::eti::Kind kind, const Type* parent, std::span<const Property> properties /*= {}*/, std::span<const Method> methods /*= {}*/, std::span<const Type*> templates /*= {}*/, std::vector<std::shared_ptr<Attribute>> attributes /*= {}*/)
         {
             if constexpr (std::is_void<T>::value == false)
             {
@@ -1014,7 +1021,8 @@ namespace eti
                         utils::GetDestruct<T>(),
                         properties,
                         methods,
-                        templates
+                        templates,
+                        attributes
                     };
                 }
                 else
@@ -1033,7 +1041,8 @@ namespace eti
                         nullptr,
                         {},
                         {},
-                        {}
+                        {},
+                        attributes
                     };
                 }
             }
@@ -1053,18 +1062,19 @@ namespace eti
                     nullptr,
                     {},
                     {},
-                    {}
+                    {},
+                    attributes
                 };
             }
         }
 
         template<typename T>
-        Type GetTypeInstance(::eti::Kind kind, const Type* parent, std::span<const Property> properties /*= {}*/, std::span<const Method> methods /*= {}*/, std::span<const Type*> templates /*= {}*/)
+        Type GetTypeInstance(::eti::Kind kind, const Type* parent, std::span<const Property> properties /*= {}*/, std::span<const Method> methods /*= {}*/, std::span<const Type*> templates /*= {}*/, std::vector<std::shared_ptr<Attribute>>&& attributes /*= {}*/)
         {
-            static Type type = internal::MakeType<T>(kind, parent, properties, methods, templates);
+            static Type type = internal::MakeType<T>(kind, parent, properties, methods, templates, attributes);
             // type may be Forward type, in this case update it on demand
             if (type.Kind == Kind::Forward && utils::IsCompleteType<T>)
-                type = internal::MakeType<T>(kind, parent, properties, methods, templates);
+                type = internal::MakeType<T>(kind, parent, properties, methods, templates, attributes);
 
             return type;
         }
@@ -1323,6 +1333,23 @@ namespace eti
         ETI_ASSERT(TypeOf<FROM>().Id == TypeOf<TO>().Id, "Move should be call using same type");
         ETI_ASSERT(HaveMove(), "try to call Type::Move on Type without MoveConstruct");
         MoveConstruct(&from, &to);
+    }
+
+    template <typename T>
+    const T* Type::GetAttribute() const
+    {
+        for (const std::shared_ptr<Attribute>& a : Attributes)
+        {
+            if (IsA<T>(*a))
+                return Cast<T>(a.get());
+        }
+        return nullptr;
+    }
+
+    template <typename T>
+    const T* Type::HaveAttribute() const
+    {
+        return GetAttribute<T>() != nullptr;
     }
 
 #pragma endregion
