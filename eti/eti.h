@@ -739,7 +739,6 @@ namespace eti
 
 #define ETI_BASE(BASE, PROPERTIES, METHODS) \
     public: \
-        using Self = BASE; \
         virtual const ::eti::Type& GetType() const { return GetTypeStatic(); } \
         ETI_TYPE_DECL_INTERNAL(BASE, nullptr, ::eti::Kind::Class) \
         ETI_PROPERTY_INTERNAL(PROPERTIES) \
@@ -752,7 +751,6 @@ namespace eti
 
 #define ETI_CLASS(CLASS, BASE, PROPERTIES, METHODS) \
     public: \
-        using Self = CLASS; \
         using Super = BASE; \
         const ::eti::Type& GetType() const override { return GetTypeStatic(); }\
         ETI_TYPE_DECL_INTERNAL(CLASS, &::eti::TypeOf<BASE>(), ::eti::Kind::Class) \
