@@ -14,7 +14,7 @@ namespace minimal_test_01
     };
 }
 
-ETI_POD_NAMED(::minimal_test_01::Point, Point)
+ETI_POD_EXT(::minimal_test_01::Point, Point)
 
 namespace minimal_test_01
 {

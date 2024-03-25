@@ -507,7 +507,7 @@ namespace eti
     static constexpr void* NoReturn = nullptr;
 
     // user may specialize this per type to have custom name (be careful to hash clash)
-    //  ex: use in ETI_POD_NAMED macro
+    //  ex: use in ETI_POD_EXT macro
     template<typename T>
     constexpr auto GetTypeNameImpl()
     {
@@ -830,7 +830,7 @@ namespace eti
 
 // use in global namespace
 
-#define ETI_POD_NAMED(T, NAME) \
+#define ETI_POD_EXT(T, NAME) \
     namespace eti \
     { \
         template<> \
@@ -1495,17 +1495,17 @@ namespace eti
 
 ETI_POD(bool);
 
-ETI_POD_NAMED(std::int8_t, i8);
-ETI_POD_NAMED(std::int16_t, i16);
-ETI_POD_NAMED(std::int32_t, i32);
-ETI_POD_NAMED(std::int64_t, i64);
+ETI_POD_EXT(std::int8_t, i8);
+ETI_POD_EXT(std::int16_t, i16);
+ETI_POD_EXT(std::int32_t, i32);
+ETI_POD_EXT(std::int64_t, i64);
 
-ETI_POD_NAMED(std::uint8_t, s8);
-ETI_POD_NAMED(std::uint16_t, s16);
-ETI_POD_NAMED(std::uint32_t, s32);
-ETI_POD_NAMED(std::uint64_t, s64);
+ETI_POD_EXT(std::uint8_t, s8);
+ETI_POD_EXT(std::uint16_t, s16);
+ETI_POD_EXT(std::uint32_t, s32);
+ETI_POD_EXT(std::uint64_t, s64);
 
-ETI_POD_NAMED(std::float_t, f32);
-ETI_POD_NAMED(std::double_t, f64);
+ETI_POD_EXT(std::float_t, f32);
+ETI_POD_EXT(std::double_t, f64);
 
 #endif

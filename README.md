@@ -286,26 +286,26 @@ define your own pod type using ETI_POD:
 ```
     ETI_POD(bool)
 ```
-or user named pod using ETI_POD_NAMED:
+or user named pod using ETI_POD_EXT:
 ```
-    ETI_POD_NAMED(std::int8_t, i8);
+    ETI_POD_EXT(std::int8_t, i8);
 ```
 by default ETI_TRIVIAL_POD is defined to 1, unless you see it to 0, will defined basic pods:
 ```
     ETI_POD(bool);
 
-    ETI_POD_NAMED(std::int8_t, i8);
-    ETI_POD_NAMED(std::int16_t, i16);
-    ETI_POD_NAMED(std::int32_t, i32);
-    ETI_POD_NAMED(std::int64_t, i64);
+    ETI_POD_EXT(std::int8_t, i8);
+    ETI_POD_EXT(std::int16_t, i16);
+    ETI_POD_EXT(std::int32_t, i32);
+    ETI_POD_EXT(std::int64_t, i64);
 
-    ETI_POD_NAMED(std::uint8_t, s8);
-    ETI_POD_NAMED(std::uint16_t, s16);
-    ETI_POD_NAMED(std::uint32_t, s32);
-    ETI_POD_NAMED(std::uint64_t, s64);
+    ETI_POD_EXT(std::uint8_t, s8);
+    ETI_POD_EXT(std::uint16_t, s16);
+    ETI_POD_EXT(std::uint32_t, s32);
+    ETI_POD_EXT(std::uint64_t, s64);
 
-    ETI_POD_NAMED(std::float_t, f32);
-    ETI_POD_NAMED(std::double_t, f64);
+    ETI_POD_EXT(std::float_t, f32);
+    ETI_POD_EXT(std::double_t, f64);
 ```
 
 # Struct
@@ -580,7 +580,7 @@ Available in slim mode:
 * ETI_CLASS
 * ETI_STRUCT
 * ETI_POD
-* ETI_POD_NAMED
+* ETI_POD_EXT
 
 ## Todo
 
