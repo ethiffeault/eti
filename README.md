@@ -76,11 +76,11 @@ void main()
 output:
 ```
 base isa Base ? 1
-base type name is: class Base
+base type name is: Base
 foo isa Base ? 1
-foo type name is: class Foo
+foo type name is: Foo
 doo isa Base ? 1
-doo type name is: class Doo
+doo type name is: Doo
 base isa Foo ? 0
 foo isa Foo ? 1
 doo isa Foo ? 0
@@ -156,7 +156,7 @@ void main()
 # Type
 Core type of eti, Type define all aspect of a given type T
 
-Getting Type from any given type use: 
+To get Type from any given type use: 
 ```
 const Type& fooType = eti::TypeOf<Foo>();
 const Type& intType = eti::TypeOf<int>();
@@ -182,7 +182,7 @@ const Type& intType = eti::TypeOf<int>();
     }
 ```
 # IsA
-IsA is core feature of eti, (available in slim mode)
+IsA to know if a type is a base type of another type
 
 usage:
 ```
@@ -360,7 +360,7 @@ Property wrap member variables of class/struct
     Property
     {
         Name;       // name
-        Type;       // TypeId
+        Type;       // Type
         Offset;     // offset from parent
         Parent;     // parent Type
         PropertyId; // id of this property (hash of it's name)
@@ -589,6 +589,7 @@ Available in slim mode:
 * Enum
 * Interface
 * Templates
+* Static member variable
 
 ## External
 
