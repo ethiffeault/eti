@@ -27,7 +27,7 @@ rtti implementation that doesn't require c++ enable rtti. This lib is one header
 
 [Configuration](##Configuration)
 
-[Slim Mode](##Slim Mode)
+[SlimMode](##SlimMode)
 
 [Todo](##Todo)
 
@@ -564,7 +564,7 @@ To change default behavior this lib provide 2 ways, one is to declare #define be
 
 list of available config #define can be found  at beginning of <eti/eti.h> (see comment for documentation)
 
-## Slim Mode
+## SlimMode
 Support slim mode when only basic type information are needed (no properties, no functions, no attributes, ...)
 
 Configuration ( default is 0)
