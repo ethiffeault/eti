@@ -106,6 +106,8 @@ namespace doc_introduction
 class Base
 {
     ETI_BASE_SLIM(Base)
+public:
+    virtual ~Base(){}
 };
 
 class Foo : public Base
@@ -145,16 +147,22 @@ namespace doc_cast
     class Base
     {
         ETI_BASE_SLIM(Base)
+    public:
+        virtual ~Base(){}
     };
 
     class Foo : public Base
     {
         ETI_CLASS_SLIM(Foo, Base)
+    public:
+        ~Foo() override{}
     };
 
     class Doo : public Base
     {
         ETI_CLASS_SLIM(Doo, Base)
+    public:
+        ~Doo() override{}
     };
     
     TEST_CASE("doc_isa")

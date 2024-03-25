@@ -701,6 +701,7 @@ namespace eti
 
 #pragma region Macros
 
+// don't use offsetof since it produce warning with clang
 #define ETI_OFFSET_OF(TYPE, MEMBER) reinterpret_cast<size_t>(&reinterpret_cast<char const volatile&>((((TYPE*)0)->MEMBER)))
 
 #define ETI_PROPERTIES(...) __VA_ARGS__
@@ -723,10 +724,10 @@ namespace eti
     TypeOf<Self>(), \
     [](void* obj, void* _return, std::span<void*> args) \
     { \
-        ::eti::utils::CallFunction(&NAME, obj, _return, args); \
+        ::eti::utils::CallFunction(&Self::NAME, obj, _return, args); \
     }, \
-    ::eti::internal::GetFunctionReturn(&NAME), \
-    ::eti::internal::GetFunctionVariables(&NAME))
+    ::eti::internal::GetFunctionReturn(&Self::NAME), \
+    ::eti::internal::GetFunctionVariables(&Self::NAME))
 
 #define ETI_METHOD_INTERNAL(...) \
     static const std::span<::eti::Method> GetMethods() \
@@ -739,7 +740,7 @@ namespace eti
     public: \
         using Self = BASE; \
         virtual const ::eti::Type& GetType() const { return GetTypeStatic(); } \
-        ETI_TYPE_DECL_INTERNAL(BASE, nullptr, ::eti::Kind::Class, PROPERTIES, METHODS) \
+        ETI_TYPE_DECL_INTERNAL(BASE, nullptr, ::eti::Kind::Class) \
         ETI_PROPERTY_INTERNAL(PROPERTIES) \
         ETI_METHOD_INTERNAL(METHODS) \
     private:
@@ -753,7 +754,7 @@ namespace eti
         using Self = CLASS; \
         using Super = BASE; \
         const ::eti::Type& GetType() const override { return GetTypeStatic(); }\
-        ETI_TYPE_DECL_INTERNAL(CLASS, &::eti::TypeOf<BASE>(), ::eti::Kind::Class, PROPERTIES, METHODS) \
+        ETI_TYPE_DECL_INTERNAL(CLASS, &::eti::TypeOf<BASE>(), ::eti::Kind::Class) \
         ETI_PROPERTY_INTERNAL(PROPERTIES) \
         ETI_METHOD_INTERNAL(METHODS) \
     private: 
@@ -761,8 +762,7 @@ namespace eti
 #define ETI_CLASS_SLIM(CLASS, BASE) \
     ETI_CLASS(CLASS, BASE, ETI_PROPERTIES(), ETI_METHODS())
 
-    // use init pattern to prevent infinite recursion (like in method with Self* as arguments)
-    #define ETI_TYPE_DECL_INTERNAL(TYPE, PARENT, KIND, PROPERTIES, METHODS) \
+#define ETI_TYPE_DECL_INTERNAL(TYPE, PARENT, KIND) \
     using Self = TYPE; \
     static constexpr ::eti::TypeId TypeId = ::eti::GetTypeId<TYPE>();\
     static const ::eti::Type& GetTypeStatic()  \
@@ -772,14 +772,14 @@ namespace eti
         if (initializing == false) \
         { \
             initializing = true; \
-            type = ::eti::internal::GetTypeInstance<TYPE>(KIND, PARENT, TYPE::GetProperties(), TYPE::GetMethods(), {}); \
+            type = ::eti::internal::template GetTypeInstance<TYPE>(KIND, PARENT, TYPE::GetProperties(), TYPE::GetMethods(), {}); \
         } \
         return type; \
     }
 
 
 #define ETI_STRUCT(STRUCT, PROPERTIES, METHODS) \
-    ETI_TYPE_DECL_INTERNAL(STRUCT, nullptr, ::eti::Kind::Struct, PROPERTIES, METHODS) \
+    ETI_TYPE_DECL_INTERNAL(STRUCT, nullptr, ::eti::Kind::Struct) \
     ETI_PROPERTY_INTERNAL(PROPERTIES) \
     ETI_METHOD_INTERNAL(METHODS)
 

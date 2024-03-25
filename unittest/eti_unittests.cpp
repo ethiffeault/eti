@@ -662,9 +662,6 @@ namespace test_14
 
     TEST_CASE("test_14")
     {
-        int i = 0;
-        Foo foo = { i, i, &i, &i };
-
         {
             const Property* p = TypeOf<Foo>().GetProperty("intValue");
             const Declaration& decl = p->Variable.Declaration;
@@ -733,8 +730,6 @@ namespace test_15
     TEST_CASE("test_15")
     {
 
-        const Type& type = TypeOf<Foo>();
-
         int intValue = 1;
         int intConstValue = 1;
         int* intPtr = nullptr;
@@ -746,7 +741,6 @@ namespace test_15
 
         {
             const Property* p = TypeOf<Foo>().GetProperty("intValue");
-            const Declaration& decl = p->Variable.Declaration;
             void* ptr = p->UnSafeGetPtr(foo);
             REQUIRE(ptr == &foo.intValue);
 
@@ -757,7 +751,6 @@ namespace test_15
 
         {
             const Property* p = TypeOf<Foo>().GetProperty("intConstValue");
-            const Declaration& decl = p->Variable.Declaration;
             void* ptr = p->UnSafeGetPtr(foo);
             REQUIRE(ptr == &foo.intConstValue);
 
@@ -768,7 +761,6 @@ namespace test_15
 
         {
             const Property* p = TypeOf<Foo>().GetProperty("intPtr");
-            const Declaration& decl = p->Variable.Declaration;
             void* ptr = p->UnSafeGetPtr(foo);
             REQUIRE(ptr == &foo.intPtr);
 
@@ -779,7 +771,6 @@ namespace test_15
 
         {
             const Property* p = TypeOf<Foo>().GetProperty("intConstPtr");
-            const Declaration& decl = p->Variable.Declaration;
             void* ptr = p->UnSafeGetPtr(foo);
             REQUIRE(ptr == &foo.intConstPtr);
 
@@ -832,8 +823,6 @@ namespace test_16
 
         const Type& objectType = Object::GetTypeStatic();
         const Property* objectPtrProperty = objectType.GetProperty("ObjectPtr");
-        const Property* fooPtrProperty = objectType.GetProperty("FooPtr");
-        const Property* dooPtrProperty = objectType.GetProperty("DooPtr");
 
         objectPtrProperty->Set(object, &object);
         REQUIRE(object.ObjectPtr == &object);
