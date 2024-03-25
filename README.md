@@ -27,6 +27,8 @@ rtti implementation that doesn't require c++ enable rtti. This lib is one header
 
 [Configuration](##Configuration)
 
+[Slim Mode](##Slim)
+
 [Todo](##Todo)
 
 [External](##External)
@@ -549,19 +551,6 @@ Repository contain type mapping from TypeId to Type and from Name to Type. Pract
 
 todo: more doc...
 
-## Slim
-Support slim mode when only basic type information are needed (no properties, no functions, no attributes, ...)
-
-Available in slime mode: 
-* TypeOf<T>()
-* IsA<T>()
-* Cast<T>()
-* ETI_BASE_SLIM
-* ETI_CLASS_SLIM
-* ETI_STRUCT_SLIM
-* ETI_POD
-* ETI_POD_NAMED
-
 ## Configuration
 
 To change default behavior this lib provide 2 ways, one is to declare #define before include, one it's to provide your own config file.
@@ -575,6 +564,24 @@ To change default behavior this lib provide 2 ways, one is to declare #define be
   #define ETI_CONFIG_HEADER 1 in <eti/eti.h> and create "eti_config.h" with all config defines.
 
 list of available config #define can be found  at beginning of <eti/eti.h> (see comment for documentation)
+
+## Slim Mode
+Support slim mode when only basic type information are needed (no properties, no functions, no attributes, ...)
+
+Configuration ( default is 0)
+```
+#define ETI_SLIM_MODE 1
+```
+
+Available in slim mode: 
+* TypeOf<T>()
+* IsA<T>()
+* Cast<T>()
+* ETI_BASE_SLIM
+* ETI_CLASS_SLIM
+* ETI_STRUCT_SLIM
+* ETI_POD
+* ETI_POD_NAMED
 
 ## Todo
 
