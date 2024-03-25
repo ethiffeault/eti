@@ -1276,7 +1276,7 @@ namespace eti
 #ifdef _MSC_VER
         void* memory = _aligned_malloc(Size, Align);
 #else
-        void* memory = std::aligned_malloc(Size, Align);
+        void* memory = aligned_malloc(Size, Align);
 #endif
         ETI_ASSERT(memory, "out of memory on Type::New call");
         Construct(memory);
@@ -1291,7 +1291,7 @@ namespace eti
 #ifdef _MSC_VER
         void* memory = _aligned_malloc(Size, Align);
 #else
-        void* memory = std::aligned_malloc(Size, Align);
+        void* memory = aligned_malloc(Size, Align);
 #endif
         ETI_ASSERT(memory, "out of memory on Type::New call");
         CopyConstruct((void*) & other, memory);
