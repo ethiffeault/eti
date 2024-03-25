@@ -36,7 +36,7 @@ namespace doc_introduction
 
     struct Point
     {
-        ETI_STRUCT(
+        ETI_STRUCT_EXT(
             Point,
             ETI_PROPERTIES
             (
@@ -105,19 +105,19 @@ namespace doc_introduction
 
 class Base
 {
-    ETI_BASE_SLIM(Base)
+    ETI_BASE(Base)
 public:
     virtual ~Base(){}
 };
 
 class Foo : public Base
 {
-    ETI_CLASS_SLIM(Foo, Base)
+    ETI_CLASS(Foo, Base)
 };
 
 class Doo : public Base
 {
-    ETI_CLASS_SLIM(Doo, Base)
+    ETI_CLASS(Doo, Base)
 };
 
 namespace doc_isa
@@ -146,21 +146,21 @@ namespace doc_cast
 {
     class Base
     {
-        ETI_BASE_SLIM(Base)
+        ETI_BASE(Base)
     public:
         virtual ~Base(){}
     };
 
     class Foo : public Base
     {
-        ETI_CLASS_SLIM(Foo, Base)
+        ETI_CLASS(Foo, Base)
     public:
         ~Foo() override{}
     };
 
     class Doo : public Base
     {
-        ETI_CLASS_SLIM(Doo, Base)
+        ETI_CLASS(Doo, Base)
     public:
         ~Doo() override{}
     };
@@ -189,7 +189,7 @@ namespace doc_properties
 
     class Person
     {
-        ETI_BASE(
+        ETI_BASE_EXT(
             Person,
             ETI_PROPERTIES
             (
@@ -234,7 +234,7 @@ namespace doc_methods
 
     struct Point
     {
-        ETI_STRUCT(
+        ETI_STRUCT_EXT(
             Point,
             ETI_PROPERTIES(
                 ETI_PROPERTY(X),

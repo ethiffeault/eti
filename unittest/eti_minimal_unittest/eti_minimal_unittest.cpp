@@ -29,7 +29,7 @@ namespace minimal_test_01
 
     class Object
     {
-        ETI_BASE_SLIM(Object)
+        ETI_BASE(Object)
     public:
         virtual ~Object(){}
         int x = 0;
@@ -37,7 +37,7 @@ namespace minimal_test_01
 
     class Foo : public Object
     {
-        ETI_CLASS_SLIM(Foo, Object)
+        ETI_CLASS(Foo, Object)
     public:
         ~Foo() override{}
         int i = 0;
@@ -46,7 +46,7 @@ namespace minimal_test_01
 
     class Doo : public Object
     {
-        ETI_CLASS_SLIM(Doo, Object)
+        ETI_CLASS(Doo, Object)
     public:
         ~Doo() override{}
         int i = 0;

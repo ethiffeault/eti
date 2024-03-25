@@ -69,7 +69,7 @@ namespace test_03
 {
     struct Foo
     {
-        ETI_STRUCT_SLIM(Foo)
+        ETI_STRUCT(Foo)
     };
 }
 
@@ -92,7 +92,7 @@ namespace test_04
 {
     class Object
     {
-        ETI_BASE(Object, ETI_PROPERTIES(), ETI_METHODS())
+        ETI_BASE_EXT(Object, ETI_PROPERTIES(), ETI_METHODS())
 
     public:
         Object() {}
@@ -116,7 +116,7 @@ namespace test_05
 {
     class Object
     {
-        ETI_BASE(Object, ETI_PROPERTIES(), ETI_METHODS())
+        ETI_BASE_EXT(Object, ETI_PROPERTIES(), ETI_METHODS())
 
     public:
         Object() {}
@@ -125,7 +125,7 @@ namespace test_05
 
     class Foo : public Object
     {
-        ETI_CLASS(Foo, Object, ETI_PROPERTIES(), ETI_METHODS())
+        ETI_CLASS_EXT(Foo, Object, ETI_PROPERTIES(), ETI_METHODS())
 
     public:
         Foo() {}
@@ -186,7 +186,7 @@ namespace test_06
 
     struct Foo
     {
-        ETI_STRUCT_SLIM(Foo)
+        ETI_STRUCT(Foo)
 
             static constexpr int IntValue = 1;
 
@@ -377,7 +377,7 @@ namespace test_08
 {
     struct Foo
     {
-        ETI_STRUCT(Foo,
+        ETI_STRUCT_EXT(Foo,
             ETI_PROPERTIES
             (
                 ETI_PROPERTY(i),
@@ -425,7 +425,7 @@ namespace test_09
 {
     struct Foo
     {
-        ETI_STRUCT(Foo,
+        ETI_STRUCT_EXT(Foo,
             ETI_PROPERTIES(),
             ETI_METHODS(
                 ETI_METHOD(GetI),
@@ -477,7 +477,7 @@ namespace test_10
 {
     struct Foo
     {
-        ETI_STRUCT(Foo,
+        ETI_STRUCT_EXT(Foo,
             ETI_PROPERTIES
             (
                 ETI_PROPERTY(i, Accessibility(Access::Private)),
@@ -521,7 +521,7 @@ namespace test_11
 
     struct Foo
     {
-        ETI_STRUCT_SLIM(Foo)
+        ETI_STRUCT(Foo)
 
             static constexpr int IntValue = 1;
 
@@ -619,7 +619,7 @@ namespace test_13
 
     struct Foo
     {
-        ETI_STRUCT(
+        ETI_STRUCT_EXT(
             Foo,
             ETI_PROPERTIES(),
             ETI_METHODS(ETI_METHOD(MemberFunction)))
@@ -642,7 +642,7 @@ namespace test_14
 
     struct Foo
     {
-        ETI_STRUCT(
+        ETI_STRUCT_EXT(
             Foo,
             ETI_PROPERTIES
             (
@@ -709,7 +709,7 @@ namespace test_15
 
     struct Foo
     {
-        ETI_STRUCT(
+        ETI_STRUCT_EXT(
             Foo,
             ETI_PROPERTIES
             (
@@ -787,7 +787,7 @@ namespace test_16
 
     class Object
     {
-        ETI_BASE(Object, ETI_PROPERTIES
+        ETI_BASE_EXT(Object, ETI_PROPERTIES
         (
             ETI_PROPERTY(ObjectPtr),
             ETI_PROPERTY(FooPtr),
@@ -807,12 +807,12 @@ namespace test_16
 
     class Foo : public Object
     {
-        ETI_CLASS_SLIM(Foo, Object)
+        ETI_CLASS(Foo, Object)
     };
 
     class Doo : public Object
     {
-        ETI_CLASS_SLIM(Foo, Object)
+        ETI_CLASS(Foo, Object)
     };
 
     TEST_CASE("test_16")
@@ -849,7 +849,7 @@ namespace test_17
 
     class Object
     {
-        ETI_BASE
+        ETI_BASE_EXT
         (
             Object,
             ETI_PROPERTIES(ETI_PROPERTY(I)),
@@ -876,7 +876,7 @@ namespace test_17
 
     class Foo : public Object
     {
-        ETI_CLASS
+        ETI_CLASS_EXT
         (
             Foo, Object,
             ETI_PROPERTIES(),
@@ -892,7 +892,7 @@ namespace test_17
 
     class Doo : public Object
     {
-        ETI_CLASS
+        ETI_CLASS_EXT
         (
             Doo, Object,
             ETI_PROPERTIES(),

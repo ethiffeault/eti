@@ -13,7 +13,7 @@ namespace forward_test
     struct Foo
     {
    
-        ETI_BASE(Foo, ETI_PROPERTIES
+        ETI_BASE_EXT(Foo, ETI_PROPERTIES
                  (
                      ETI_PROPERTY(DooPtr)
                  ),

@@ -530,8 +530,8 @@ namespace eti
     enum class Kind : std::uint8_t
     {
         Void,       // void
-        Class,      // ETI_BASE or ETI_CLASS
-        Struct,     // ETI_STRUCT
+        Class,      // ETI_BASE_EXT or ETI_CLASS_EXT
+        Struct,     // ETI_STRUCT_EXT
         Pod,        // ETI_POD
         Template,   // ETI_TEMPLATE_X
         Unknown,    // automatic declared type, when user not supply it's own declaration
@@ -749,7 +749,7 @@ namespace eti
         return methods; \
     }
 
-#define ETI_BASE(BASE, PROPERTIES, METHODS, ...) \
+#define ETI_BASE_EXT(BASE, PROPERTIES, METHODS, ...) \
     public: \
         virtual const ::eti::Type& GetType() const { return GetTypeStatic(); } \
         ETI_INTERNAL_TYPE_DECL(BASE, nullptr, ::eti::Kind::Class, __VA_ARGS__) \
@@ -757,10 +757,10 @@ namespace eti
         ETI_INTERNAL_METHOD(METHODS) \
     private:
 
-#define ETI_BASE_SLIM(CLASS, ...) \
-    ETI_BASE(CLASS, ETI_PROPERTIES(), ETI_METHODS())
+#define ETI_BASE(CLASS, ...) \
+    ETI_BASE_EXT(CLASS, ETI_PROPERTIES(), ETI_METHODS())
 
-#define ETI_CLASS(CLASS, BASE, PROPERTIES, METHODS, ...) \
+#define ETI_CLASS_EXT(CLASS, BASE, PROPERTIES, METHODS, ...) \
     public: \
         using Super = BASE; \
         const ::eti::Type& GetType() const override { return GetTypeStatic(); }\
@@ -769,16 +769,16 @@ namespace eti
         ETI_INTERNAL_METHOD(METHODS) \
     private: 
 
-#define ETI_CLASS_SLIM(CLASS, BASE, ...) \
-    ETI_CLASS(CLASS, BASE, ETI_PROPERTIES(), ETI_METHODS())
+#define ETI_CLASS(CLASS, BASE, ...) \
+    ETI_CLASS_EXT(CLASS, BASE, ETI_PROPERTIES(), ETI_METHODS())
 
-#define ETI_STRUCT(STRUCT, PROPERTIES, METHODS, ...) \
+#define ETI_STRUCT_EXT(STRUCT, PROPERTIES, METHODS, ...) \
     ETI_INTERNAL_TYPE_DECL(STRUCT, nullptr, ::eti::Kind::Struct, __VA_ARGS__) \
     ETI_INTERNAL_PROPERTY(PROPERTIES) \
     ETI_INTERNAL_METHOD(METHODS)
 
-#define ETI_STRUCT_SLIM(STRUCT, ...) \
-    ETI_STRUCT(STRUCT, ETI_PROPERTIES(), ETI_METHODS(), __VA_ARGS__)
+#define ETI_STRUCT(STRUCT, ...) \
+    ETI_STRUCT_EXT(STRUCT, ETI_PROPERTIES(), ETI_METHODS(), __VA_ARGS__)
 
 #define ETI_INTERNAL_TYPE_DECL(TYPE, PARENT, KIND, ...) \
     using Self = TYPE; \
@@ -1429,7 +1429,7 @@ namespace eti
     // Attribute decl and impl at the end, sinec it's using type information
     class Attribute
     {
-        ETI_BASE_SLIM(Attribute)
+        ETI_BASE(Attribute)
     public:
         virtual ~Attribute(){}
     };
@@ -1474,7 +1474,7 @@ namespace eti
 
     class Accessibility : public eti::Attribute
     {
-        ETI_CLASS_SLIM(Accessibility, Attribute)
+        ETI_CLASS(Accessibility, Attribute)
 
     public:
 

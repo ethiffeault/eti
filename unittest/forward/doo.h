@@ -8,7 +8,7 @@ namespace forward_test
 {
     struct Doo
     {
-        ETI_BASE_SLIM(Doo)
+        ETI_BASE(Doo)
     public:
         virtual ~Doo(){}
     };

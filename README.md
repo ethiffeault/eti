@@ -41,17 +41,17 @@ using namespace eti;
 
 class Object
 {
-    ETI_BASE_SLIM(Object)
+    ETI_BASE(Object)
 };
 
 class Foo : public Object
 {
-    ETI_CLASS_SLIM(Foo, Object)
+    ETI_CLASS(Foo, Object)
 };
 
 class Doo : public Object
 {
-    ETI_CLASS_SLIM(Doo, Object)
+    ETI_CLASS(Doo, Object)
 };
 
 void main()
@@ -95,7 +95,7 @@ using namespace eti;
 
 struct Point
 {
-    ETI_STRUCT(
+    ETI_STRUCT_EXT(
         Point, 
         ETI_PROPERTIES( 
             ETI_PROPERTY( X ), 
@@ -193,17 +193,17 @@ usage:
 ```
     class Base
     {
-        ETI_BASE_SLIM(Base)
+        ETI_BASE(Base)
     };
 
     class Foo : public Base
     {
-        ETI_CLASS_SLIM(Foo, Base)
+        ETI_CLASS(Foo, Base)
     };
 
     class Doo : public Base
     {
-        ETI_CLASS_SLIM(Doo, Base)
+        ETI_CLASS(Doo, Base)
     };
 
     TEST_CASE("doc_isa")
@@ -245,17 +245,17 @@ usage:
 ```
     class Base
     {
-        ETI_BASE_SLIM(Base)
+        ETI_BASE(Base)
     };
 
     class Foo : public Base
     {
-        ETI_CLASS_SLIM(Foo, Base)
+        ETI_CLASS(Foo, Base)
     };
 
     class Doo : public Base
     {
-        ETI_CLASS_SLIM(Doo, Base)
+        ETI_CLASS(Doo, Base)
     };
     
     TEST_CASE("doc_isa")
@@ -309,11 +309,11 @@ by default ETI_TRIVIAL_POD is defined to 1, unless you see it to 0, will defined
 ```
 
 # Struct
-use ETI_STRUCT to define struct, struct are base type, no virtual table and no inheritance:
+use ETI_STRUCT_EXT to define struct, struct are base type, no virtual table and no inheritance:
 ```
     struct Point
     {
-        ETI_STRUCT(
+        ETI_STRUCT_EXT(
             Point,
             ETI_PROPERTIES(
                 ETI_PROPERTY(X),
@@ -347,7 +347,7 @@ class are dynamic object with virtual table. eti provide an optional common base
 ```
     class Object
     {
-        ETI_BASE_SLIM(Object)
+        ETI_BASE(Object)
     public:
         virtual ~Object(){}
     };
@@ -371,7 +371,7 @@ Property wrap member variables of class/struct
 ```
     class Person
     {
-        ETI_BASE(
+        ETI_BASE_EXT(
             Person,
             ETI_PROPERTIES
             (
@@ -448,7 +448,7 @@ UnSafeCall is the bare bone way of calling method:
 
     struct Point
     {
-        ETI_STRUCT(
+        ETI_STRUCT_EXT(
             Point,
             ETI_PROPERTIES(
                 ETI_PROPERTY(X),
@@ -519,7 +519,7 @@ May be user defined like this:
 ```
     class Documentation : public eti::Attribute
     {
-        ETI_CLASS_SLIM(Documentation, Attribute)
+        ETI_CLASS(Documentation, Attribute)
 
     public:
 
@@ -534,7 +534,7 @@ May be user defined like this:
     // use it on any property, method and type:
     ETI_PROPERTY(Age, Documentation("Age doc..."))
     ETI_METHOD(GetAge, Documentation("Age getter..."))
-    ETI_CLASS(Foo, Base, Documentation("Foo class..."))
+    ETI_CLASS_EXT(Foo, Base, ETI_PROPERTIES(), ETI_METHODS(), Documentation("Foo class..."))
 
     // query it:
     const Documentation* doc = TypeOf<Foo>().GetProperty<Documentation>();
@@ -576,9 +576,9 @@ Available in slim mode:
 * TypeOf<T>()
 * IsA<T>()
 * Cast<T>()
-* ETI_BASE_SLIM
-* ETI_CLASS_SLIM
-* ETI_STRUCT_SLIM
+* ETI_BASE
+* ETI_CLASS
+* ETI_STRUCT
 * ETI_POD
 * ETI_POD_NAMED
 
