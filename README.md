@@ -169,7 +169,6 @@ Core type of eti, Type define all aspect of a given type T
 ```
 # IsA
 IsA is core feature of eti, (available in slim mode)
-ex:
 ```
     class Base
     {
@@ -259,12 +258,10 @@ invalid
 ```
 # POD
 define your own pod type using ETI_POD macro.
-ex:
 ```
     ETI_POD(bool)
 ```
 or used named macro ETI_POD_NAMED to specify name
-ex:
 ```
     ETI_POD_NAMED(std::int8_t, i8);
 ```
@@ -288,7 +285,6 @@ by default ETI_TRIVIAL_POD is defined to 1, unless you see it to 0, will defined
 
 # Struct
 use ETI_STRUCT to define struct, struct are base type, no virtual destructor and no inheritance.
-ex:
 ```
     struct Point
     {
@@ -345,7 +341,7 @@ you can define you own base class as needed.
         Attributes; // all attributes
     }
 ```
-ex:
+
 
 ```
     class Person
@@ -428,7 +424,6 @@ or
 when method is void return, use eti::NoReturn like :
 * setX->CallMethod(p, NoReturn, 1);
 
-ex:
 ```
     using namespace eti;
 
