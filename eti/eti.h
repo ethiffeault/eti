@@ -726,15 +726,15 @@ namespace eti
 
 #define ETI_METHOD(NAME, ...) \
     ::eti::internal::MakeMethod(#NAME, \
-    ::eti::utils::IsMethodStatic<decltype(&Self::NAME)>, \
-    ::eti::utils::IsMethodConst<decltype(&Self::NAME)>, \
-    TypeOf<Self>(), \
-    [](void* obj, void* _return, std::span<void*> args) \
-    { \
-        ::eti::utils::CallFunction(&Self::NAME, obj, _return, args); \
-    }, \
-    ::eti::internal::GetFunctionReturn(&Self::NAME), \
-    ::eti::internal::GetFunctionVariables(&Self::NAME))
+        ::eti::utils::IsMethodStatic<decltype(&Self::NAME)>, \
+        ::eti::utils::IsMethodConst<decltype(&Self::NAME)>, \
+        TypeOf<Self>(), \
+        [](void* obj, void* _return, std::span<void*> args) \
+        { \
+            ::eti::utils::CallFunction(&Self::NAME, obj, _return, args); \
+        }, \
+        ::eti::internal::GetFunctionReturn(&Self::NAME), \
+        ::eti::internal::GetFunctionVariables(&Self::NAME))
 
 #define ETI_INTERNAL_METHOD(...) \
     static const std::span<::eti::Method> GetMethods() \
@@ -753,7 +753,6 @@ namespace eti
 
 #define ETI_BASE_SLIM(CLASS) \
     ETI_BASE(CLASS, ETI_PROPERTIES(), ETI_METHODS())
-
 
 #define ETI_CLASS(CLASS, BASE, PROPERTIES, METHODS) \
     public: \
@@ -781,7 +780,6 @@ namespace eti
         } \
         return type; \
     }
-
 
 #define ETI_STRUCT(STRUCT, PROPERTIES, METHODS) \
     ETI_INTERNAL_TYPE_DECL(STRUCT, nullptr, ::eti::Kind::Struct) \
@@ -998,7 +996,7 @@ namespace eti
         {
             if constexpr (std::is_void<T>::value == false)
             {
-                if  constexpr (utils::IsCompleteType<T>)
+                if constexpr (utils::IsCompleteType<T>)
                 {
                     return
                     {
@@ -1436,7 +1434,7 @@ namespace eti
         Unknown
     };
 
-    inline constexpr std::string_view GetAccessName(Access access)
+    constexpr std::string_view GetAccessName(Access access)
     {
         switch (access)
         {
