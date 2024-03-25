@@ -27,7 +27,7 @@ rtti implementation that doesn't require c++ enable rtti. This lib is one header
 
 [Configuration](##Configuration)
 
-[Slim Mode](##Slim)
+[Slim Mode](##Slim Mode)
 
 [Todo](##Todo)
 
@@ -282,15 +282,15 @@ valid
 invalid
 ```
 # POD
-define your own pod type using ETI_POD macro.
+define your own pod type using ETI_POD:
 ```
     ETI_POD(bool)
 ```
-or used named pod using ETI_POD_NAMED to specify name
+or user named pod using ETI_POD_NAMED:
 ```
     ETI_POD_NAMED(std::int8_t, i8);
 ```
-by default ETI_TRIVIAL_POD is defined to 1, unless you see it to 0, will defined basic pods
+by default ETI_TRIVIAL_POD is defined to 1, unless you see it to 0, will defined basic pods:
 ```
     ETI_POD(bool);
 
@@ -309,7 +309,7 @@ by default ETI_TRIVIAL_POD is defined to 1, unless you see it to 0, will defined
 ```
 
 # Struct
-use ETI_STRUCT to define struct, struct are base type, no virtual destructor and no inheritance.
+use ETI_STRUCT to define struct, struct are base type, no virtual table and no inheritance:
 ```
     struct Point
     {
@@ -343,7 +343,7 @@ use ETI_STRUCT to define struct, struct are base type, no virtual destructor and
     };
 ```
 # Class
-class are dynamic object with virtual table, with virtual destructor. eti provide an optional common base class:
+class are dynamic object with virtual table. eti provide an optional common base class:
 ```
     class Object
     {
@@ -355,7 +355,7 @@ class are dynamic object with virtual table, with virtual destructor. eti provid
 you can define you own base class as needed.
 
 # Properties
-Property wrap member variables of a class/struct
+Property wrap member variables of class/struct
 ```
     Property
     {
@@ -543,13 +543,12 @@ May be user defined like this:
 ```    
 
 ## Repository
-WIP
+**WIP**
+
 To enable Repository use config : 
 * #define ETI_REPOSITORY 1
 
 Repository contain type mapping from TypeId to Type and from Name to Type. Practical for pattern like serialization.
-
-todo: more doc...
 
 ## Configuration
 
@@ -561,7 +560,7 @@ To change default behavior this lib provide 2 ways, one is to declare #define be
 
 * config file:
 
-  #define ETI_CONFIG_HEADER 1 in <eti/eti.h> and create "eti_config.h" with all config defines.
+  #define ETI_CONFIG_HEADER 1 in <eti/eti.h> and create "eti_config.h" with your configurations.
 
 list of available config #define can be found  at beginning of <eti/eti.h> (see comment for documentation)
 
