@@ -309,7 +309,7 @@ by default ETI_TRIVIAL_POD is defined to 1, unless you see it to 0, will defined
 ```
 
 # Struct
-use ETI_STRUCT_EXT to define struct, struct are base type, no virtual table and no inheritance:
+use ETI_STRUCT or ETI_STRUCT_EXT to define struct, struct are base type, no virtual table and no inheritance:
 ```
     struct Point
     {
@@ -343,7 +343,7 @@ use ETI_STRUCT_EXT to define struct, struct are base type, no virtual table and 
     };
 ```
 # Class
-class are dynamic object with virtual table. eti provide an optional common base class:
+Use ETI_BASE or ETI_BASE_EXT to define class, class are dynamic object with virtual table. eti provide an optional common base class:
 ```
     class Object
     {
