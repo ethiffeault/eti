@@ -28,6 +28,7 @@
 #include <functional>
 #include <string_view>
 #include <span>
+#include <stdlib.h>
 
 #pragma region Configuration
 
@@ -280,7 +281,7 @@ namespace eti
         template<typename RETURN, typename... ARGS>
         struct CallStaticFunctionImpl
         {
-            static void Call(RETURN(*func)(ARGS...), void* obj, void* ret, std::span<void*> args)
+            static void Call(RETURN(*func)(ARGS...), void*, void* ret, std::span<void*> args)
             {
                 ETI_ASSERT(ret != nullptr, "call function that return void should have ret arg to nullptr");
                 auto args_tuple = utils::VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
@@ -292,7 +293,7 @@ namespace eti
         template<typename... ARGS>
         struct CallStaticFunctionImpl<void, ARGS...>
         {
-            static void Call(void(*func)(ARGS...), void* obj, void* ret, std::span<void*> args)
+            static void Call(void(*func)(ARGS...), void*, void* ret, std::span<void*> args)
             {
                 ETI_ASSERT(ret == nullptr, "call function that return void should have ret arg to nullptr");
                 auto args_tuple = VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
@@ -421,7 +422,7 @@ namespace eti
         //
         // Variable
 
-        inline Variable MakeVariable(std::string_view name, ::eti::Declaration declaration);
+        Variable MakeVariable(std::string_view name, ::eti::Declaration declaration);
 
         template<typename T>
         const Variable* GetVariableInstance(std::string_view name);
@@ -901,7 +902,7 @@ namespace eti
         //
         // Variable
 
-        static Variable MakeVariable(std::string_view name, ::eti::Declaration declaration)
+        inline Variable MakeVariable(std::string_view name, ::eti::Declaration declaration)
         {
             return
             {
@@ -928,25 +929,25 @@ namespace eti
         // Methods
 
         template<typename RETURN, typename... ARGS>
-        const Variable* GetFunctionReturn(RETURN(*func)(ARGS...))
+        const Variable* GetFunctionReturn(RETURN(*)(ARGS...))
         {
             return internal::GetVariableInstance<RETURN>("");
         }
 
         template<typename OBJECT, typename RETURN, typename... ARGS>
-        const Variable* GetFunctionReturn(RETURN(OBJECT::* func)(ARGS...))
+        const Variable* GetFunctionReturn(RETURN(OBJECT::*)(ARGS...))
         {
             return internal::GetVariableInstance<RETURN>("");
         }
 
         template<typename RETURN, typename... ARGS>
-        std::span<Variable> GetFunctionVariables(RETURN(*func)(ARGS...))
+        std::span<Variable> GetFunctionVariables(RETURN(*)(ARGS...))
         {
             return internal::GetVariableInstances<ARGS...>();
         }
 
         template<typename OBJECT, typename RETURN, typename... ARGS>
-        std::span<Variable> GetFunctionVariables(RETURN(OBJECT::* func)(ARGS...))
+        std::span<Variable> GetFunctionVariables(RETURN(OBJECT::*)(ARGS...))
         {
             return internal::GetVariableInstances<ARGS...>();
         }
@@ -1272,7 +1273,11 @@ namespace eti
     {
         ETI_ASSERT(IsA(TypeOf<T>(), *this), "try to call Type::New with non compatible type");
         ETI_ASSERT(HaveConstruct(), "try to call Type::New on Type without Construct");
+#ifdef _MSC_VER
         void* memory = _aligned_malloc(Size, Align);
+#else
+        void* memory = std::aligned_malloc(Size, Align);
+#endif
         ETI_ASSERT(memory, "out of memory on Type::New call");
         Construct(memory);
         return static_cast<T*>(memory);
@@ -1283,7 +1288,11 @@ namespace eti
     {
         ETI_ASSERT(IsA(TypeOf<T>(), *this), "try to call Type::New with non compatible type");
         ETI_ASSERT(HaveCopyConstruct(), "try to call Type::New on Type without Construct");
+#ifdef _MSC_VER
         void* memory = _aligned_malloc(Size, Align);
+#else
+        void* memory = std::aligned_malloc(Size, Align);
+#endif
         ETI_ASSERT(memory, "out of memory on Type::New call");
         CopyConstruct((void*) & other, memory);
         return static_cast<T*>(memory);

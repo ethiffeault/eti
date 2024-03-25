@@ -530,12 +530,12 @@ namespace test_11
             ++construct;
         }
 
-        Foo(const Foo& foo)
+        Foo(const Foo&)
         {
             copyConstruct++;
         }
 
-        Foo(Foo&& foo)
+        Foo(Foo&&)
         {
             moveConstruct++;
         }
