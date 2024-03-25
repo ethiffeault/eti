@@ -322,7 +322,8 @@ use ETI_STRUCT or ETI_STRUCT_EXT to define struct, struct are base type, no virt
                 ETI_PROPERTY(Y)),
             ETI_METHODS(
                 ETI_METHOD(SetX),
-                ETI_METHOD(Add)))
+                ETI_METHOD(Add)),
+            [, attibutes...])
 
         void SetX(int x)
         {
@@ -345,7 +346,7 @@ use ETI_STRUCT or ETI_STRUCT_EXT to define struct, struct are base type, no virt
     };
 ```
 # Class
-Use ETI_BASE or ETI_BASE_EXT to define class, class are dynamic object with virtual table. eti provide an optional common base class:
+Use ETI_BASE or ETI_BASE_EXT to define class, class are dynamic object with virtual table. eti provide an optional common base class eti::Object
 ```
     class Object
     {
@@ -353,6 +354,17 @@ Use ETI_BASE or ETI_BASE_EXT to define class, class are dynamic object with virt
     public:
         virtual ~Object(){}
     };
+
+    class Foo
+    {
+        ETI_CLASS(Foo, Object)
+    };    
+
+    class Doo
+    {
+        ETI_CLASS_EXT(Doo, Object, PROPERTIES(), METHODS() [, attributes...])
+    };    
+
 ```
 you can define you own base class as needed.
 
@@ -377,7 +389,7 @@ Property wrap member variables of class/struct
             Person,
             ETI_PROPERTIES
             (
-                ETI_PROPERTY(Age)
+                ETI_PROPERTY(Age [, attributes...])
             ),
             ETI_METHODS())
     public:
@@ -433,6 +445,23 @@ Method
         Parent;     // parent, const Type* Parent
         Attributes; // all attributes
 }
+```
+```
+    class Person
+    {
+        ETI_BASE_EXT(
+            Person,
+            ETI_PROPERTIES(),
+            ETI_METHODS
+            ( 
+                ETI_METHOD(GetAge[, attributes...])
+            ))
+    public:
+        virtual ~Person(){}
+        int GetAge() const { return Age; }
+    private:
+        int Age = 0;
+    };
 ```
 Call look like:
 * void CallMethod(PARENT& owner, RETURN* ret, ARGS... args) const;
