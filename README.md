@@ -157,13 +157,14 @@ Core type of eti, Type define all aspect of a given type T
         Size;               // size(T)
         Align;              // alignof(T)
         Parent;             // parent if any
-        Construct;          // std::function<void(void* /* dst */)>
-        CopyConstruct;      // std::function<void(void* /* src */, void* /* dst */)>
-        MoveConstruct;      // std::function<void(void* /* src */, void* /* dst */)>
-        Destruct;           // std::function<void(void* /* dst */)>
-        Properties;         // std::span<const Property>
-        Methods;            // std::span<const Method>
-        Templates;          // std::span<const Type*> Templates
+        Construct;          // Constructor
+        CopyConstruct;      // Copy Constructor
+        MoveConstruct;      // Move Constructor
+        Destruct;           // Destructor
+        Properties;         // Properties
+        Methods;            // Methods
+        Templates;          // Templates types
+        Attributes;         // Attributes
     }
 ```
 # IsA
@@ -396,7 +397,6 @@ for advance usage, Property provide this to get member variable pointer (offset 
     void* Property::UnSafeGetPtr(OBJECT& obj) const;
 ```
 
-
 ## Methods
 
 ```
@@ -410,6 +410,7 @@ Method
         Return;     // return type, const Variable*
         Arguments;  // arguments, std::span<const Variable>
         Parent;     // parent, const Type* Parent
+        Attributes; // all attributes
 }
 ```
 UnSafeCall is the bare bone way of calling method:
@@ -571,6 +572,7 @@ list of available config #define can be found  at beginning of <eti/eti.h> (see 
 * External struct/class decl
 * Enum
 * Interface
+* Templates
 
 ## External
 
