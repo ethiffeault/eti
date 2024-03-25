@@ -25,13 +25,13 @@ rtti implementation that doesn't require c++ enable rtti. This lib is one header
 
 [Repository](#Repository)
 
-[Configuration](##Configuration)
+[Configuration](#Configuration)
 
-[SlimMode](##SlimMode)
+[SlimMode](#SlimMode)
 
-[Todo](##Todo)
+[Todo](#Todo)
 
-[External](##External)
+[External](#External)
 
 # Introduction
 
