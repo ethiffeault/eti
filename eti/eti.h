@@ -421,7 +421,7 @@ namespace eti
         //
         // Variable
 
-        static Variable MakeVariable(std::string_view name, ::eti::Declaration declaration);
+        inline Variable MakeVariable(std::string_view name, ::eti::Declaration declaration);
 
         template<typename T>
         const Variable* GetVariableInstance(std::string_view name);
@@ -701,9 +701,11 @@ namespace eti
 
 #pragma region Macros
 
+#define ETI_OFFSET_OF(TYPE, MEMBER) reinterpret_cast<size_t>(&reinterpret_cast<char const volatile&>((((TYPE*)0)->MEMBER)))
+
 #define ETI_PROPERTIES(...) __VA_ARGS__
 
-#define ETI_PROPERTY(NAME, ...) ::eti::internal::MakeProperty<decltype(NAME)>(#NAME, offsetof(Self, NAME), TypeOf<Self>(),  ::eti::internal::GetAttributes<PropertyAttribute>(__VA_ARGS__))
+#define ETI_PROPERTY(NAME, ...) ::eti::internal::MakeProperty<decltype(NAME)>(#NAME, ETI_OFFSET_OF(Self, NAME), TypeOf<Self>(),  ::eti::internal::GetAttributes<PropertyAttribute>(__VA_ARGS__))
 
 #define ETI_PROPERTY_INTERNAL(...) \
     static const std::span<::eti::Property> GetProperties() \
@@ -1082,7 +1084,7 @@ namespace eti
             if constexpr (utils::HaveGetTypeStatic<RawType>)
                 return RawType::GetTypeStatic();
             else
-                return TypeOfImpl<RawType>::template GetTypeStatic();
+                return TypeOfImpl<RawType>::GetTypeStatic();
         }
 
         template<typename T, typename... ARGS>
