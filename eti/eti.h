@@ -20,9 +20,6 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 
-// eti dev version from v0.0.1
-// 2024/03/19
-
 #pragma once
 
 #include <functional>
