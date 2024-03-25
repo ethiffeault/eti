@@ -445,7 +445,7 @@ namespace eti
         template<typename OBJECT, typename RETURN, typename... ARGS>
         std::span<Variable> GetFunctionVariables(RETURN(OBJECT::* func)(ARGS...));
 
-        static Method MethodMake(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return = nullptr, std::span<const Variable> arguments = {});
+        static Method MakeMethod(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return = nullptr, std::span<const Variable> arguments = {});
 
         //
         // Property
@@ -709,13 +709,13 @@ namespace eti
 #pragma region Macros
 
 // don't use offsetof since it produce warning with clang
-#define ETI_OFFSET_OF(TYPE, MEMBER) reinterpret_cast<size_t>(&reinterpret_cast<char const volatile&>((((TYPE*)0)->MEMBER)))
+#define ETI_INTERNAL_OFFSET_OF(TYPE, MEMBER) reinterpret_cast<size_t>(&reinterpret_cast<char const volatile&>((((TYPE*)0)->MEMBER)))
 
 #define ETI_PROPERTIES(...) __VA_ARGS__
 
-#define ETI_PROPERTY(NAME, ...) ::eti::internal::MakeProperty<decltype(NAME)>(#NAME, ETI_OFFSET_OF(Self, NAME), TypeOf<Self>(),  ::eti::internal::GetAttributes<PropertyAttribute>(__VA_ARGS__))
+#define ETI_PROPERTY(NAME, ...) ::eti::internal::MakeProperty<decltype(NAME)>(#NAME, ETI_INTERNAL_OFFSET_OF(Self, NAME), TypeOf<Self>(),  ::eti::internal::GetAttributes<PropertyAttribute>(__VA_ARGS__))
 
-#define ETI_PROPERTY_INTERNAL(...) \
+#define ETI_INTERNAL_PROPERTY(...) \
     static const std::span<::eti::Property> GetProperties() \
     { \
         static std::vector<::eti::Property> properties = { __VA_ARGS__ }; \
@@ -725,7 +725,7 @@ namespace eti
 #define ETI_METHODS(...) __VA_ARGS__
 
 #define ETI_METHOD(NAME, ...) \
-    ::eti::internal::MethodMake(#NAME, \
+    ::eti::internal::MakeMethod(#NAME, \
     ::eti::utils::IsMethodStatic<decltype(&Self::NAME)>, \
     ::eti::utils::IsMethodConst<decltype(&Self::NAME)>, \
     TypeOf<Self>(), \
@@ -736,7 +736,7 @@ namespace eti
     ::eti::internal::GetFunctionReturn(&Self::NAME), \
     ::eti::internal::GetFunctionVariables(&Self::NAME))
 
-#define ETI_METHOD_INTERNAL(...) \
+#define ETI_INTERNAL_METHOD(...) \
     static const std::span<::eti::Method> GetMethods() \
     { \
         static std::vector<::eti::Method> methods = { __VA_ARGS__ }; \
@@ -746,9 +746,9 @@ namespace eti
 #define ETI_BASE(BASE, PROPERTIES, METHODS) \
     public: \
         virtual const ::eti::Type& GetType() const { return GetTypeStatic(); } \
-        ETI_TYPE_DECL_INTERNAL(BASE, nullptr, ::eti::Kind::Class) \
-        ETI_PROPERTY_INTERNAL(PROPERTIES) \
-        ETI_METHOD_INTERNAL(METHODS) \
+        ETI_INTERNAL_TYPE_DECL(BASE, nullptr, ::eti::Kind::Class) \
+        ETI_INTERNAL_PROPERTY(PROPERTIES) \
+        ETI_INTERNAL_METHOD(METHODS) \
     private:
 
 #define ETI_BASE_SLIM(CLASS) \
@@ -759,15 +759,15 @@ namespace eti
     public: \
         using Super = BASE; \
         const ::eti::Type& GetType() const override { return GetTypeStatic(); }\
-        ETI_TYPE_DECL_INTERNAL(CLASS, &::eti::TypeOf<BASE>(), ::eti::Kind::Class) \
-        ETI_PROPERTY_INTERNAL(PROPERTIES) \
-        ETI_METHOD_INTERNAL(METHODS) \
+        ETI_INTERNAL_TYPE_DECL(CLASS, &::eti::TypeOf<BASE>(), ::eti::Kind::Class) \
+        ETI_INTERNAL_PROPERTY(PROPERTIES) \
+        ETI_INTERNAL_METHOD(METHODS) \
     private: 
 
 #define ETI_CLASS_SLIM(CLASS, BASE) \
     ETI_CLASS(CLASS, BASE, ETI_PROPERTIES(), ETI_METHODS())
 
-#define ETI_TYPE_DECL_INTERNAL(TYPE, PARENT, KIND) \
+#define ETI_INTERNAL_TYPE_DECL(TYPE, PARENT, KIND) \
     using Self = TYPE; \
     static constexpr ::eti::TypeId TypeId = ::eti::GetTypeId<TYPE>();\
     static const ::eti::Type& GetTypeStatic()  \
@@ -784,14 +784,14 @@ namespace eti
 
 
 #define ETI_STRUCT(STRUCT, PROPERTIES, METHODS) \
-    ETI_TYPE_DECL_INTERNAL(STRUCT, nullptr, ::eti::Kind::Struct) \
-    ETI_PROPERTY_INTERNAL(PROPERTIES) \
-    ETI_METHOD_INTERNAL(METHODS)
+    ETI_INTERNAL_TYPE_DECL(STRUCT, nullptr, ::eti::Kind::Struct) \
+    ETI_INTERNAL_PROPERTY(PROPERTIES) \
+    ETI_INTERNAL_METHOD(METHODS)
 
 #define ETI_STRUCT_SLIM(STRUCT) \
     ETI_STRUCT(STRUCT, ETI_PROPERTIES(), ETI_METHODS())
 
-#define ETI_TYPE_IMPL(TYPE, KIND, PARENT, PROPERTY_VARIABLES) \
+#define ETI_INTERNAL_TYPE_IMPL(TYPE, KIND, PARENT, PROPERTY_VARIABLES) \
     namespace eti \
     { \
         template<> \
@@ -808,7 +808,7 @@ namespace eti
 // use in global namespace
 
 #define ETI_POD(TYPE) \
-    ETI_TYPE_IMPL(TYPE, ::eti::Kind::Pod, nullptr, {})
+    ETI_INTERNAL_TYPE_IMPL(TYPE, ::eti::Kind::Pod, nullptr, {})
 
 #define ETI_TEMPLATE_1_IMPL(TYPE) \
     namespace eti \
@@ -835,7 +835,7 @@ namespace eti
             return ::std::string_view(#NAME); \
         } \
     } \
-    ETI_TYPE_IMPL(T, ::eti::Kind::Pod, nullptr, {})
+    ETI_INTERNAL_TYPE_IMPL(T, ::eti::Kind::Pod, nullptr, {})
 
 #define ETI_TEMPLATE_2_IMPL(TYPE) \
     namespace eti \
@@ -862,15 +862,15 @@ namespace eti
 //        {
 //            static std::vector<Method> methods = 
 //            {
-//                internal::MethodMake("Size", [](void* obj, void* r, std::span<void*>)
+//                internal::MakeMethod("Size", [](void* obj, void* r, std::span<void*>)
 //                {
 //                    std::vector<T1, T2>* array = (std::vector<T1, T2>*) obj;
 //                    int* returnValue = (int*)r;
 //                    *returnValue = (int)array->size();
 //                }),
-//                internal::MethodMake("Get", nullptr),
-//                internal::MethodMake("Add", nullptr),
-//                internal::MethodMake("Remove", nullptr)
+//                internal::MakeMethod("Get", nullptr),
+//                internal::MakeMethod("Add", nullptr),
+//                internal::MakeMethod("Remove", nullptr)
 //            };
 //            static Type type = Type::MakeType<std::vector<T1, T2>>(Kind::Template, nullptr, {},  methods, TypesOf<T1, T2>());
 //            return type;  
@@ -977,7 +977,7 @@ namespace eti
         //
         // Method
 
-        inline Method MethodMake(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return /*= nullptr*/, std::span<const Variable> arguments /*= {}*/)
+        inline Method MakeMethod(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return /*= nullptr*/, std::span<const Variable> arguments /*= {}*/)
         {
             return
             {

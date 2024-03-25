@@ -852,7 +852,7 @@ namespace test_17
         ETI_BASE
         (
             Object,
-            ETI_PROPERTIES(),
+            ETI_PROPERTIES(ETI_PROPERTY(I)),
             ETI_METHODS
             (
                 ETI_METHOD(GetName),
@@ -866,8 +866,8 @@ namespace test_17
 
         static double Add(int n0, float n1) { return n0 + n1; }
 
-        int* GetIPtr() { return &i; }
-        int i = 12;
+        int* GetIPtr() { return &I; }
+        int I = 12;
 
     protected:
         virtual std::string_view GetName() { return "my name is Object"; }
@@ -939,11 +939,11 @@ namespace test_17
             int* getIPtr = nullptr;
             getIPtrMethod->CallMethod(foo, &getIPtr);
 
-            int* iPtr = &foo.i;
+            int* iPtr = &foo.I;
             REQUIRE(iPtr == getIPtr);
 
             *getIPtr = 3;
-            REQUIRE(foo.i == 3);
+            REQUIRE(foo.I == 3);
         }
     }
 }
