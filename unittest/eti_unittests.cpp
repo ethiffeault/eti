@@ -40,7 +40,7 @@ namespace test_01
     TEST_CASE("test_01")
     {
         std::string fooTypeName(GetTypeName<Foo>());
-        REQUIRE(fooTypeName == "struct test_01::Foo");
+        REQUIRE(fooTypeName == "test_01::Foo");
 
         TypeId fooNameHash = ETI_HASH_FUNCTION(GetTypeName<Foo>());
 
@@ -78,7 +78,7 @@ namespace test_03
     TEST_CASE("test_03")
     {
         const Type& type = TypeOf<Foo>();
-        REQUIRE(type.Name == "struct test_03::Foo");
+        REQUIRE(type.Name == "test_03::Foo");
         REQUIRE(type.Id != 0);
         REQUIRE(type.Kind == Kind::Struct);
         REQUIRE(type.Size == sizeof(Foo));
@@ -102,7 +102,7 @@ namespace test_04
     TEST_CASE("test_04")
     {
         const Type& type = TypeOf<Object>();
-        REQUIRE(type.Name == "class test_04::Object");
+        REQUIRE(type.Name == "test_04::Object");
         REQUIRE(type.Id != 0);
         REQUIRE(type.Kind == Kind::Class);
         REQUIRE(type.Size == sizeof(Object));
@@ -136,7 +136,7 @@ namespace test_05
     {
         {
             const Type& type = TypeOf<Object>();
-            REQUIRE(type.Name == "class test_05::Object");
+            REQUIRE(type.Name == "test_05::Object");
             REQUIRE(type.Id != 0);
             REQUIRE(type.Kind == Kind::Class);
             REQUIRE(type.Size == sizeof(Object));
@@ -146,7 +146,7 @@ namespace test_05
 
         {
             const Type& type = TypeOf<Foo>();
-            REQUIRE(type.Name == "class test_05::Foo");
+            REQUIRE(type.Name == "test_05::Foo");
             REQUIRE(type.Id != 0);
             REQUIRE(type.Kind == Kind::Class);
             REQUIRE(type.Size == sizeof(Object));

@@ -495,6 +495,12 @@ namespace eti
         std::string_view pretty_function{ __FUNCSIG__ };
         auto first = pretty_function.find_first_not_of(' ', pretty_function.find_first_of('<') + 1);
         auto value = pretty_function.substr(first, pretty_function.find_last_of('>') - first);
+        std::string_view structPrefix = "struct ";
+        std::string_view classPrefix = "class ";
+        if (value.starts_with(structPrefix))
+            value.remove_prefix(structPrefix.size());
+        else if (value.starts_with(classPrefix)) 
+            value.remove_prefix(classPrefix.size());
         return value;
     }
 #else
