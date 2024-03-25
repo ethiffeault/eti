@@ -130,7 +130,7 @@ namespace eti
     struct Property;
     struct Method;
     enum class Kind : std::uint8_t;
-    class PropertyAttribute;
+    class Attribute;
     template<typename T>
     const Type& TypeOf();
     template<typename T>
@@ -445,13 +445,13 @@ namespace eti
         template<typename OBJECT, typename RETURN, typename... ARGS>
         std::span<Variable> GetFunctionVariables(RETURN(OBJECT::* func)(ARGS...));
 
-        static Method MakeMethod(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return = nullptr, std::span<const Variable> arguments = {});
+        static Method MakeMethod(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return = nullptr, std::span<const Variable> arguments = {}, std::vector<std::shared_ptr<Attribute>>&& attributes = {});
 
         //
         // Property
 
         template <typename T>
-        static Property MakeProperty(std::string_view name, size_t offset, const Type& parent, std::vector<std::shared_ptr<PropertyAttribute>>&& attributes = {});
+        static Property MakeProperty(std::string_view name, size_t offset, const Type& parent, std::vector<std::shared_ptr<Attribute>>&& attributes = {});
 
         //
         // Type
@@ -587,7 +587,7 @@ namespace eti
         size_t Offset;
         const Type& Parent;
         TypeId PropertyId = 0;
-        std::vector<std::shared_ptr<PropertyAttribute>> Attributes;
+        std::vector<std::shared_ptr<Attribute>> Attributes;
 
         template <typename T>
         const T* GetAttribute() const;
@@ -616,6 +616,7 @@ namespace eti
         const Variable* Return;
         std::span<const Variable> Arguments;
         const Type* Parent = nullptr;
+        std::vector<std::shared_ptr<Attribute>> Attributes;
 
         template <typename T>
         const T* GetAttribute() const;
@@ -713,7 +714,7 @@ namespace eti
 
 #define ETI_PROPERTIES(...) __VA_ARGS__
 
-#define ETI_PROPERTY(NAME, ...) ::eti::internal::MakeProperty<decltype(NAME)>(#NAME, ETI_INTERNAL_OFFSET_OF(Self, NAME), TypeOf<Self>(),  ::eti::internal::GetAttributes<PropertyAttribute>(__VA_ARGS__))
+#define ETI_PROPERTY(NAME, ...) ::eti::internal::MakeProperty<decltype(NAME)>(#NAME, ETI_INTERNAL_OFFSET_OF(Self, NAME), TypeOf<Self>(),  ::eti::internal::GetAttributes<Attribute>(__VA_ARGS__))
 
 #define ETI_INTERNAL_PROPERTY(...) \
     static const std::span<::eti::Property> GetProperties() \
@@ -734,7 +735,8 @@ namespace eti
             ::eti::utils::CallFunction(&Self::NAME, obj, _return, args); \
         }, \
         ::eti::internal::GetFunctionReturn(&Self::NAME), \
-        ::eti::internal::GetFunctionVariables(&Self::NAME))
+        ::eti::internal::GetFunctionVariables(&Self::NAME), \
+        ::eti::internal::GetAttributes<Attribute>(__VA_ARGS__))
 
 #define ETI_INTERNAL_METHOD(...) \
     static const std::span<::eti::Method> GetMethods() \
@@ -958,7 +960,7 @@ namespace eti
         // Property
 
         template <typename T>
-        Property MakeProperty(std::string_view name, size_t offset, const Type& parent, std::vector<std::shared_ptr<PropertyAttribute>>&& attributes /*= {}*/)
+        Property MakeProperty(std::string_view name, size_t offset, const Type& parent, std::vector<std::shared_ptr<Attribute>>&& attributes /*= {}*/)
         {
             ETI_ASSERT(!std::is_reference<T>(), "reference not supported for property, (offsetof return always 0)");
 
@@ -975,7 +977,7 @@ namespace eti
         //
         // Method
 
-        inline Method MakeMethod(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return /*= nullptr*/, std::span<const Variable> arguments /*= {}*/)
+        inline Method MakeMethod(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return /*= nullptr*/, std::span<const Variable> arguments /*= {}*/, std::vector<std::shared_ptr<Attribute>>&& attributes /*= {}*/)
         {
             return
             {
@@ -987,7 +989,7 @@ namespace eti
                 _return,
                 arguments,
                 &parent,
-                // todo: attributes
+                attributes
             };
         }
 
@@ -1159,7 +1161,11 @@ namespace eti
     template <typename T>
     const T* Method::GetAttribute() const
     {
-        // todo: implement!
+        for (const std::shared_ptr<Attribute>& a : Attributes)
+        {
+            if (IsA<T>(*a))
+                return Cast<T>(a.get());
+        }
         return nullptr;
     }
 
@@ -1396,28 +1402,18 @@ namespace eti
 
 #pragma region Attributes
 
+    // Attribute decl and impl at the end, sinec it's using type information
     class Attribute
     {
-        ETI_BASE(Attribute, ETI_PROPERTIES(), ETI_METHODS())
+        ETI_BASE_SLIM(Attribute)
     public:
-        Attribute() {}
-        virtual ~Attribute() {}
-    };
-
-    // PropertyAttribute decl and impl at the end, sinec it's using type information
-    class PropertyAttribute : public Attribute
-    {
-        ETI_CLASS(PropertyAttribute, Attribute, ETI_PROPERTIES(), ETI_METHODS())
-    public:
-        PropertyAttribute() {}
-        ~PropertyAttribute() override {}
-
+        virtual ~Attribute(){}
     };
 
     template <typename T>
     const T* Property::GetAttribute() const
     {
-        for (const std::shared_ptr<PropertyAttribute>& a : Attributes)
+        for (const std::shared_ptr<Attribute>& a : Attributes)
         {
             if (IsA<T>(*a))
                 return Cast<T>(a.get());
@@ -1452,9 +1448,9 @@ namespace eti
         return "";
     }
 
-    class Accessibility : public eti::PropertyAttribute
+    class Accessibility : public eti::Attribute
     {
-        ETI_CLASS_SLIM(Accessibility, PropertyAttribute)
+        ETI_CLASS_SLIM(Accessibility, Attribute)
 
     public:
 

@@ -857,7 +857,7 @@ namespace test_17
             (
                 ETI_METHOD(GetName),
                 ETI_METHOD(Add),
-                ETI_METHOD(GetIPtr)
+                ETI_METHOD(GetIPtr, Accessibility(Access::Public))
             )
         )
 
@@ -944,6 +944,10 @@ namespace test_17
 
             *getIPtr = 3;
             REQUIRE(foo.I == 3);
+
+            const Accessibility* accessibility= getIPtrMethod->GetAttribute<Accessibility>();
+            REQUIRE(accessibility != nullptr);
+            REQUIRE(accessibility->Access == Access::Public);
         }
     }
 }
