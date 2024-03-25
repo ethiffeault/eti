@@ -5,6 +5,9 @@
 
 todo.txt
 unittest/eti_playground.cpp
+*.o
+*.exe
+build.bat
 
 # User-specific files
 *.rsuser
