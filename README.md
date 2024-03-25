@@ -3,7 +3,6 @@ Extended Type Information for c++
 
 rtti implementation that doesn't require c++ enable rtti. This lib is one header only without any external dependencies.
 
-# Table of Contents
 [Introduction](#Introduction)
 
 [Type](#Type)
@@ -12,19 +11,25 @@ rtti implementation that doesn't require c++ enable rtti. This lib is one header
 
 [Cast](#Cast)
 
+[POD](#POD)
+
+[Struct](#Struct)
+
+[Class](#Class)
+
 [Properties](#Properties)
 
 [Methods](#Methods)
 
 [Attributes](#Attributes)
 
-[Struct](#Struct)
-
-[Class](#Class)
-
-[POD](#POD)
-
 [Repository](#Repository)
+
+[Configuration](##Configuration)
+
+[Todo](##Todo)
+
+[External](##External)
 
 # Introduction
 
@@ -214,7 +219,6 @@ foo isa Doo ? 0
 doo isa Doo ? 1
 ```
 
-
 # Cast
 dynamic cast of T, when not match, return nullptr or not compile on incompatible type.
 ```
@@ -330,6 +334,7 @@ class are dynamic object with virtual table, of curse with virtual destructor. e
 you can define you own base class as needed.
 
 # Properties
+Property wrap member variable of a class/struct
 ```
     Property
     {
@@ -342,7 +347,6 @@ you can define you own base class as needed.
     }
 ```
 
-
 ```
     class Person
     {
@@ -350,8 +354,7 @@ you can define you own base class as needed.
             Person,
             ETI_PROPERTIES
             (
-                // optional Accessibility attribute, can also be user defined... see Attributes
-                ETI_PROPERTY(Age, Accessibility(Access::Private))
+                ETI_PROPERTY(Age)
             ),
             ETI_METHODS())
     public:
@@ -374,17 +377,15 @@ you can define you own base class as needed.
         ageProperty->Get(person, age);
         cout << "Adult Age is " << age << endl;
 
-        cout << "Person::Age member is "
-        << GetAccessName(ageProperty->GetAttribute<Accessibility>()->Access)
-        << " of type : " << ageProperty->Variable.Declaration.Type.Name
+        cout << "Person::Age member is of type : " << ageProperty->Variable.Declaration.Type.Name
         << endl;
     }
     // output
     //  Init Age is 0
     //  Adult Age is 21
-    //  Person::Age member is private of type : i32
+    //  Person::Age member is of type : i32
 ```
-for advance usage, Property provide this to get member variable pointer (offset from obj):
+for advance usage, Property provide unsafe method for direct access (offset from obj):
 
 ```
     inline void* Property::UnSafeGetPtr(void* obj) const;
@@ -395,6 +396,7 @@ for advance usage, Property provide this to get member variable pointer (offset 
 
 ## Methods
 
+Method wrap static and non-static member methods on struct/class.
 ```
 Method
 {
@@ -409,20 +411,16 @@ Method
         Attributes; // all attributes
 }
 ```
-UnSafeCall is the bare bone way of calling method:
-
-* void UnSafeCall(void* obj, void* ret, std::span<void*> args) const;
-
-when static, obj should be nullptr.
-when void return, ret should be nullptr, or helper eti::NoReturn arg.
-
-that said, when possible, prefer use:
+Call look like:
 * void CallMethod(PARENT& owner, RETURN* ret, ARGS... args) const;
 or
 * void CallStaticMethod(RETURN* ret, ARGS... args) const;
 
 when method is void return, use eti::NoReturn like :
 * setX->CallMethod(p, NoReturn, 1);
+
+UnSafeCall is the bare bone way of calling method:
+* void UnSafeCall(void* obj, void* ret, std::span<void*> args) const;
 
 ```
     using namespace eti;
@@ -490,14 +488,14 @@ output:
 
 ## Attributes
 
-Attribute are supported on Struct, Class, Properties ans Methods
+Attribute are supported on Struct, Class, Properties and Methods
 
 * Struct
 * Class
 * Properties
 * Methods
 
-Attribute may be user defined like this:
+May be user defined like this:
 ```
     class Documentation : public eti::Attribute
     {
@@ -525,7 +523,7 @@ Attribute may be user defined like this:
 ```    
 
 ## Repository
-
+WIP
 To enable Repository use config : 
 * #define ETI_REPOSITORY 1
 
