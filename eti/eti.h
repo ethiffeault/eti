@@ -454,10 +454,7 @@ namespace eti
         // Type
 
         template<typename T>
-        static const Type MakeType(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {}, std::vector<std::shared_ptr<Attribute>> attributes = {});
-
-        template<typename T>
-        Type GetTypeInstance(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {}, std::vector<std::shared_ptr<Attribute>>&& attributes = {});
+        static Type MakeType(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {}, std::vector<std::shared_ptr<Attribute>> attributes = {});
 
         template<typename... ARGS>
         std::span<const Type*> GetTypeInstances();
@@ -790,7 +787,7 @@ namespace eti
         if (initializing == false) \
         { \
             initializing = true; \
-            type = ::eti::internal::template GetTypeInstance<TYPE>(KIND, PARENT, TYPE::GetProperties(), TYPE::GetMethods(), {}, ::eti::internal::GetAttributes<Attribute>(__VA_ARGS__)); \
+            type = ::eti::internal::template MakeType<TYPE>(KIND, PARENT, TYPE::GetProperties(), TYPE::GetMethods(), {}, ::eti::internal::GetAttributes<Attribute>(__VA_ARGS__)); \
         } \
         return type; \
     }
@@ -803,7 +800,7 @@ namespace eti
         { \
             static const ::eti::Type& GetTypeStatic() \
             { \
-                static ::eti::Type type = ::eti::internal::GetTypeInstance<TYPE>(KIND, PARENT, PROPERTY_VARIABLES, {}, {}); \
+                static ::eti::Type type = ::eti::internal::MakeType<TYPE>(KIND, PARENT, PROPERTY_VARIABLES, {}, {}); \
                 return type; \
             } \
         }; \
@@ -814,21 +811,6 @@ namespace eti
 #define ETI_POD(TYPE) \
     ETI_INTERNAL_TYPE_IMPL(TYPE, ::eti::Kind::Pod, nullptr, {})
 
-#define ETI_TEMPLATE_1_IMPL(TYPE) \
-    namespace eti \
-    {  \
-        template<typename T1> \
-        struct TypeOfImpl<TYPE<T1>>  \
-        {  \
-            static const Type& GetTypeStatic()  \
-            {  \
-                static ::eti::Type type = ::eti::internal::GetTypeInstance<TYPE<T1>>(::eti::Kind::Template, nullptr, {}, {}, ::eti::TypesOf<T1>());  \
-                return type;  \
-            } \
-        }; \
-    }
-
-// use in global namespace
 
 #define ETI_POD_EXT(T, NAME) \
     namespace eti \
@@ -841,6 +823,19 @@ namespace eti
     } \
     ETI_INTERNAL_TYPE_IMPL(T, ::eti::Kind::Pod, nullptr, {})
 
+#define ETI_TEMPLATE_1_IMPL(TYPE) \
+    namespace eti \
+    {  \
+        template<typename T1> \
+        struct TypeOfImpl<TYPE<T1>>  \
+        {  \
+            static const Type& GetTypeStatic()  \
+            {  \
+                return ::eti::internal::MakeType<TYPE<T1>>(::eti::Kind::Template, nullptr, {}, {}, ::eti::TypesOf<T1>());  \
+            } \
+        }; \
+    }
+
 #define ETI_TEMPLATE_2_IMPL(TYPE) \
     namespace eti \
     {  \
@@ -849,8 +844,7 @@ namespace eti
         {  \
             static const ::eti::Type& GetTypeStatic()  \
             {  \
-                static ::eti::Type::eti:: type = ::eti::internal::GetTypeInstance<TYPE<T1, T2>>(::eti::Kind::Template, nullptr, {}, {}, ::eti::TypesOf<T1, T2>());  \
-                return type;  \
+                return ::eti::internal::MakeType<TYPE<T1, T2>>(::eti::Kind::Template, nullptr, {}, {}, ::eti::TypesOf<T1, T2>());  \
             } \
         }; \
     }
@@ -998,7 +992,7 @@ namespace eti
         }
 
         template<typename T>
-        static const Type MakeType(::eti::Kind kind, const Type* parent, std::span<const Property> properties /*= {}*/, std::span<const Method> methods /*= {}*/, std::span<const Type*> templates /*= {}*/, std::vector<std::shared_ptr<Attribute>> attributes /*= {}*/)
+        static Type MakeType(::eti::Kind kind, const Type* parent, std::span<const Property> properties /*= {}*/, std::span<const Method> methods /*= {}*/, std::span<const Type*> templates /*= {}*/, std::vector<std::shared_ptr<Attribute>> attributes /*= {}*/)
         {
             if constexpr (std::is_void<T>::value == false)
             {
@@ -1063,17 +1057,6 @@ namespace eti
                     attributes
                 };
             }
-        }
-
-        template<typename T>
-        Type GetTypeInstance(::eti::Kind kind, const Type* parent, std::span<const Property> properties /*= {}*/, std::span<const Method> methods /*= {}*/, std::span<const Type*> templates /*= {}*/, std::vector<std::shared_ptr<Attribute>>&& attributes /*= {}*/)
-        {
-            static Type type = internal::MakeType<T>(kind, parent, properties, methods, templates, attributes);
-            // type may be Forward type, in this case update it on demand
-            if (type.Kind == Kind::Forward && utils::IsCompleteType<T>)
-                type = internal::MakeType<T>(kind, parent, properties, methods, templates, attributes);
-
-            return type;
         }
 
         template<typename... ARGS>
