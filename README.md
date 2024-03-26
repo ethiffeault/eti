@@ -17,6 +17,8 @@ rtti implementation that doesn't require c++ enable rtti. This lib is one header
 
 [Class](#Class)
 
+[Enum](#Enum)
+
 [Properties](#Properties)
 
 [Methods](#Methods)
@@ -372,6 +374,52 @@ Use ETI_BASE or ETI_BASE_EXT to define class, class are dynamic object with virt
 ```
 you can define you own base class as needed.
 
+# Enum
+enum can be defined in global scope, namespace or as inner type of struct/class
+
+```
+namespace doc_enum
+{
+    ETI_ENUM
+    (
+        std::uint8_t, Day,
+            Monday,
+            Tuesday,
+            Wednesday,
+            Thursday,
+            Friday,
+            Saturday,
+            Sunday
+    )
+}
+ETI_ENUM_IMPL(doc_enum::Day)
+```
+note:  ETI_ENUM_IMPL() go in global namespace.
+
+you have access like this :
+```
+        const Type& type = TypeOf<Day>();
+        std::cout << "enum: " << type.Name << " of type " << type.Parent->Name << " with " << type.EnumSize << " values" << std::endl;
+        std::cout << "all enum values:" << std::endl;
+        for ( size_t i = 0; i < type.EnumSize; ++i )
+            std::cout << "    name: " << type.GetEnumValueName(i) << ", value: " << i << std::endl;
+
+```
+
+```
+        // output: 
+        //      enum: enum Day of type u8 with 7 values
+        //      all enum values:
+        //          name: Monday, value: 0
+        //          name: Tuesday, value: 1
+        //          name: Wednesday, value: 2
+        //          name: Thursday, value: 3
+        //          name: Friday, value: 4
+        //          name: Saturday, value: 5
+        //          name: Sunday, value: 6
+
+```
+
 # Properties
 Property wrap member variables of class/struct
 ```
@@ -681,7 +729,7 @@ output:
     property type: i32
 ```
 
-member template variable are also supported, define it using :
+external template are also supported, define it using :
 ```
     ETI_TEMPLATE_1(std::vector)
     ETI_TEMPLATE_2(std::map)
@@ -785,7 +833,6 @@ Compile:
 # Todo
 
 * Repository
-* Enum
 * Interface
 * Static member variable
 

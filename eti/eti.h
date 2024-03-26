@@ -495,7 +495,12 @@ namespace eti
         // Type
 
         template<typename T>
-        static Type MakeType(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {}, std::vector<std::shared_ptr<Attribute>> attributes = {});
+        static Type MakeType(::eti::Kind kind, const Type* parent, 
+            std::span<const Property> properties = {}, 
+            std::span<const Method> methods = {}, 
+            std::span<const Type*> templates = {}, 
+            std::vector<std::shared_ptr<Attribute>> attributes = {},
+            std::string_view enumNames = {});
 
         template<typename... ARGS>
         std::span<const Type*> GetTypes();
@@ -508,6 +513,12 @@ namespace eti
         // use static const Type& T::GetTypeStatic(){...} if available
         template<typename T>
         const Type& OwnerGetType();
+
+        //
+        // Enum
+
+        constexpr size_t GetCharCount(std::string_view str, char c);
+        constexpr std::string_view GetEnumNameWithOffset(std::string_view names, size_t index, size_t offset = 0);
     }
 
 #pragma endregion
@@ -595,6 +606,8 @@ namespace eti
                 return "pod";
             case Kind::Template:
                 return "template";
+            case Kind::Enum:
+                return "enum";
             case Kind::Unknown:
                 return "unknown";
             case Kind::Forward:
@@ -689,6 +702,8 @@ namespace eti
         std::span<const Method> Methods;
         std::span<const Type*> Templates; // todo: implement!
         std::vector<std::shared_ptr<Attribute>> Attributes;
+        std::string_view EnumNames;
+        size_t EnumSize = 0;
 
         bool operator==(const Type& other) const { return Id == other.Id; }
         bool operator!=(const Type& other) const { return !(*this == other); }
@@ -720,6 +735,10 @@ namespace eti
 
         template <typename T>
         const T* HaveAttribute() const;
+
+        // enum
+        std::string_view GetEnumValueName(std::size_t enumValue) const;
+        TypeId GetEnumValueHash(std::size_t enumValue) const;
     };
 
     // default impl of TypeOfImpl::GetTypeStatic(), should be specialized
@@ -759,7 +778,7 @@ namespace eti
 
 #define ETI_PROPERTIES(...) __VA_ARGS__
 
-#define ETI_PROPERTY(NAME, ...) ::eti::internal::MakeProperty<decltype(Self::NAME)>(#NAME, ETI_INTERNAL_OFFSET_OF(Self, Self::NAME), TypeOf<Self>(),  ::eti::internal::GetAttributes<Attribute>(__VA_ARGS__))
+#define ETI_PROPERTY(NAME, ...) ::eti::internal::MakeProperty<decltype(Self::NAME)>(#NAME, ETI_INTERNAL_OFFSET_OF(Self, Self::NAME), ::eti::TypeOf<Self>(),  ::eti::internal::GetAttributes<::eti::Attribute>(__VA_ARGS__))
 
 #define ETI_INTERNAL_PROPERTY(...) \
     static const std::span<::eti::Property> GetProperties() \
@@ -774,14 +793,14 @@ namespace eti
     ::eti::internal::MakeMethod(#NAME, \
         ::eti::utils::IsMethodStatic<decltype(&Self::NAME)>, \
         ::eti::utils::IsMethodConst<decltype(&Self::NAME)>, \
-        TypeOf<Self>(), \
+        ::eti::TypeOf<Self>(), \
         [](void* obj, void* _return, std::span<void*> args) \
         { \
             ::eti::utils::CallFunction(&Self::NAME, obj, _return, args); \
         }, \
         ::eti::internal::GetFunctionReturn(&Self::NAME), \
         ::eti::internal::GetFunctionVariables(&Self::NAME), \
-        ::eti::internal::GetAttributes<Attribute>(__VA_ARGS__))
+        ::eti::internal::GetAttributes<::eti::Attribute>(__VA_ARGS__))
 
 #define ETI_INTERNAL_METHOD(...) \
     static const std::span<::eti::Method> GetMethods() \
@@ -866,7 +885,7 @@ namespace eti
                     initializing = true; \
                     static std::vector<::eti::Property> properties = { PROPERTIES }; \
                     static std::vector<::eti::Method> methods =  { METHODS  }; \
-                    type = ::eti::internal::MakeType<Self>(::eti::Kind::Struct, nullptr, properties, methods, {}, ::eti::internal::GetAttributes<Attribute>(__VA_ARGS__)); \
+                    type = ::eti::internal::MakeType<Self>(::eti::Kind::Struct, nullptr, properties, methods, {}, ::eti::internal::GetAttributes<::eti::Attribute>(__VA_ARGS__)); \
                 } \
                 return type; \
             } \
@@ -889,7 +908,7 @@ namespace eti
                     initializing = true; \
                     static std::vector<::eti::Property> properties = { PROPERTIES }; \
                     static std::vector<::eti::Method> methods =  { METHODS  }; \
-                    type = ::eti::internal::MakeType<Self>(::eti::Kind::Class, nullptr, properties, methods, {}, ::eti::internal::GetAttributes<Attribute>(__VA_ARGS__)); \
+                    type = ::eti::internal::MakeType<Self>(::eti::Kind::Class, nullptr, properties, methods, {}, ::eti::internal::GetAttributes<::eti::Attribute>(__VA_ARGS__)); \
                 } \
                 return type; \
             } \
@@ -912,7 +931,7 @@ namespace eti
                     initializing = true; \
                     static std::vector<::eti::Property> properties = { PROPERTIES }; \
                     static std::vector<::eti::Method> methods =  { METHODS  }; \
-                    type = ::eti::internal::MakeType<Self>(::eti::Kind::Class, &TypeOf<BASE>(), properties, methods, {}, ::eti::internal::GetAttributes<Attribute>(__VA_ARGS__)); \
+                    type = ::eti::internal::MakeType<Self>(::eti::Kind::Class, &::eti::TypeOf<BASE>(), properties, methods, {}, ::eti::internal::GetAttributes<::eti::Attribute>(__VA_ARGS__)); \
                 } \
                 return type; \
             } \
@@ -937,6 +956,41 @@ namespace eti
         }; \
     } \
     ETI_INTERNAL_TYPE_IMPL(T, ::eti::Kind::Pod, nullptr, {}, {}, {}, {})
+
+
+#define ETI_INTERNAL_ENUM_ARGS_STRING(...) #__VA_ARGS__
+
+#define ETI_INTERNAL_ENUM_ARGS_SIZE(...)  (::eti::internal::GetCharCount(::std::string_view(ETI_INTERNAL_ENUM_ARGS_STRING(__VA_ARGS__)), ',') + 1)
+
+#define ETI_ENUM(TYPE, ENUM, ...) \
+    enum class ENUM : TYPE \
+    { \
+        __VA_ARGS__ \
+    }; \
+    static constexpr std::string_view ENUM##Names = ETI_INTERNAL_ENUM_ARGS_STRING(__VA_ARGS__);
+
+
+#define ETI_ENUM_IMPL(ENUM) \
+    namespace eti \
+    { \
+        template <> \
+        struct TypeOfImpl<ENUM> \
+        { \
+            static const ::eti::Type& GetTypeStatic() \
+            { \
+                using Self = ENUM; \
+                static bool initializing = false; \
+                static ::eti::Type type; \
+                if (initializing == false) \
+                { \
+                    initializing = true; \
+                    type = ::eti::internal::MakeType<Self>(::eti::Kind::Enum, &::eti::TypeOf<std::underlying_type_t<Self>>(), {}, {}, {}, {}, ENUM##Names); \
+                } \
+                return type;\
+            } \
+        }; \
+    }
+
 
 #define ETI_TEMPLATE_1(TEMPLATE_NAME) \
     namespace eti \
@@ -1109,7 +1163,12 @@ namespace eti
         }
 
         template<typename T>
-        static Type MakeType(::eti::Kind kind, const Type* parent, std::span<const Property> properties /*= {}*/, std::span<const Method> methods /*= {}*/, std::span<const Type*> templates /*= {}*/, std::vector<std::shared_ptr<Attribute>> attributes /*= {}*/)
+        static Type MakeType(::eti::Kind kind, const Type* parent, 
+            std::span<const Property> properties /*= {}*/, 
+            std::span<const Method> methods /*= {}*/, 
+            std::span<const Type*> templates /*= {}*/, 
+            std::vector<std::shared_ptr<Attribute>> attributes /*= {}*/,
+            std::string_view enumNames /*= {}*/)
         {
             if constexpr (std::is_void<T>::value == false)
             {
@@ -1130,7 +1189,9 @@ namespace eti
                         properties,
                         methods,
                         templates,
-                        attributes
+                        attributes,
+                        enumNames,
+                        internal::GetCharCount(enumNames, ',') + 1
                     };
                 }
                 else
@@ -1150,7 +1211,9 @@ namespace eti
                         {},
                         {},
                         {},
-                        attributes
+                        {},
+                        {},
+                        0
                     };
                 }
             }
@@ -1171,7 +1234,9 @@ namespace eti
                     {},
                     {},
                     {},
-                    attributes
+                    {},
+                    {},
+                    0
                 };
             }
         }
@@ -1203,6 +1268,38 @@ namespace eti
         static std::vector<std::shared_ptr<T>> GetAttributes(ARGS... args)
         {
             return { std::make_shared<ARGS>(args)... };
+        }
+
+        //
+        // Enum
+
+        constexpr size_t GetCharCount( std::string_view str, char c )
+        {
+            size_t count = 0;
+            for (size_t i = 0; i < str.size(); ++i)
+            {
+                if (str[i] == c)
+                    count++;
+            }
+            return count;    
+        }
+
+        constexpr std::string_view GetEnumNameWithOffset(std::string_view names, size_t index, size_t offset/* = 0*/)
+        {
+            if (index == 0)
+            {
+                auto first = names.find_first_not_of(' ', offset);
+                auto last = names.find_first_of(',', first + 1);
+                if (last == std::string_view::npos)
+                    last = names.size();
+                std::string_view name = names.substr(first, last - first);
+                return name;
+            }
+            else
+            {
+                auto nextOffset = names.find_first_of(',', offset) + 1;
+                return GetEnumNameWithOffset(names, index - 1, nextOffset);
+            }
         }
     }
 
@@ -1451,6 +1548,19 @@ namespace eti
         return GetAttribute<T>() != nullptr;
     }
 
+    inline std::string_view Type::GetEnumValueName(size_t enumValue) const
+    {
+        ETI_ASSERT(Kind == Kind::Enum, "GetEnumValueName should be only called with enum");
+        return internal::GetEnumNameWithOffset(EnumNames, enumValue, 0);
+    }
+
+    inline TypeId Type::GetEnumValueHash(std::size_t enumValue) const
+    {
+        ETI_ASSERT(Kind == Kind::Enum, "GetEnumValueHash should be only called with enum");
+        return ETI_HASH_FUNCTION(GetEnumValueName(enumValue));
+    }
+
+
 #pragma endregion
 
 #pragma region Global Implementation
@@ -1539,7 +1649,7 @@ namespace eti
     template <typename T>
     const T* Property::GetAttribute() const
     {
-        for (const std::shared_ptr<Attribute>& a : Attributes)
+        for (const std::shared_ptr<::eti::Attribute>& a : Attributes)
         {
             if (IsA<T>(*a))
                 return Cast<T>(a.get());
@@ -1574,7 +1684,7 @@ namespace eti
         return "";
     }
 
-    class Accessibility : public eti::Attribute
+    class Accessibility : public Attribute
     {
         ETI_CLASS(Accessibility, Attribute)
 
@@ -1596,15 +1706,15 @@ namespace eti
 
 ETI_POD(bool);
 
-ETI_POD_EXT(std::int8_t, i8);
-ETI_POD_EXT(std::int16_t, i16);
-ETI_POD_EXT(std::int32_t, i32);
-ETI_POD_EXT(std::int64_t, i64);
+ETI_POD_EXT(std::int8_t, s8);
+ETI_POD_EXT(std::int16_t, s16);
+ETI_POD_EXT(std::int32_t, s32);
+ETI_POD_EXT(std::int64_t, s64);
 
-ETI_POD_EXT(std::uint8_t, s8);
-ETI_POD_EXT(std::uint16_t, s16);
-ETI_POD_EXT(std::uint32_t, s32);
-ETI_POD_EXT(std::uint64_t, s64);
+ETI_POD_EXT(std::uint8_t, u8);
+ETI_POD_EXT(std::uint16_t, u16);
+ETI_POD_EXT(std::uint32_t, u32);
+ETI_POD_EXT(std::uint64_t, u64);
 
 ETI_POD_EXT(std::float_t, f32);
 ETI_POD_EXT(std::double_t, f64);

@@ -287,3 +287,43 @@ namespace doc_methods
         }
     }
 }
+
+namespace doc_enum
+{
+    ETI_ENUM
+    (
+        std::uint8_t, Day,
+        Monday,
+        Tuesday,
+        Wednesday,
+        Thursday,
+        Friday,
+        Saturday,
+        Sunday
+    )
+}
+ETI_ENUM_IMPL(doc_enum::Day)
+
+namespace doc_enum
+{
+    TEST_CASE("doc_enum")
+    {
+        using namespace eti;
+        const Type& type = TypeOf<Day>();
+        std::cout << "enum: " << type.Name << " of type " << type.Parent->Name << " with " << type.EnumSize << " values" << std::endl;
+        std::cout << "all enum values:" << std::endl;
+        for ( size_t i = 0; i < type.EnumSize; ++i )
+            std::cout << "    name: " << type.GetEnumValueName(i) << ", value: " << i << std::endl;
+
+        // output: 
+        //      enum: enum doc_enum::Day of type u8 with 7 values
+        //      all enum values:
+        //          name: Monday, value: 0
+        //          name: Tuesday, value: 1
+        //          name: Wednesday, value: 2
+        //          name: Thursday, value: 3
+        //          name: Friday, value: 4
+        //          name: Saturday, value: 5
+        //          name: Sunday, value: 6
+    }
+}

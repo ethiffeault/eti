@@ -55,7 +55,7 @@ namespace test_02
     TEST_CASE("test_02")
     {
         const Type& type = TypeOf<int>();
-        REQUIRE(type.Name == "i32");
+        REQUIRE(type.Name == "s32");
         REQUIRE(type.Id != 0);
         REQUIRE(type.Kind == Kind::Pod);
         REQUIRE(type.Size == sizeof(int));
@@ -363,12 +363,12 @@ namespace test_07
         std::string_view iConstPtrName = GetTypeName<decltype(iConstPtr)>();
         std::string_view iPtrConstName = GetTypeName<decltype(iPtrConst)>();
 
-        REQUIRE(iName == "i32");
-        REQUIRE(iRefName == "i32");
-        REQUIRE(iConstRefName == "i32");
-        REQUIRE(iPtrName == "i32");
-        REQUIRE(iConstPtrName == "i32");
-        REQUIRE(iPtrConstName == "i32");
+        REQUIRE(iName == "s32");
+        REQUIRE(iRefName == "s32");
+        REQUIRE(iConstRefName == "s32");
+        REQUIRE(iPtrName == "s32");
+        REQUIRE(iConstPtrName == "s32");
+        REQUIRE(iPtrConstName == "s32");
     }
 }
 
@@ -388,7 +388,7 @@ namespace test_08
             ETI_METHODS()
         )
 
-            int i = 0;
+        int i = 0;
         float f = 0.0f;
         int* ptr = nullptr;
         std::vector<float> fv;
