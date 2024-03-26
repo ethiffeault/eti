@@ -801,7 +801,7 @@ To change default behavior this lib provide 2 ways, one is to declare #define be
 
   #define ETI_CONFIG_HEADER 1 in <eti/eti.h> and create "eti_config.h" with your configurations.
 
-list of available config #define can be found  at beginning of <eti/eti.h> (see comment for documentation)
+list of available config #define can be found  at beginning of <eti/eti.h> (see comments)
 
 # UnitTests
 
