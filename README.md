@@ -654,7 +654,7 @@ To enable Repository use config :
 
 Repository contain type mapping from TypeId to Type and from Name to Type. Practical for pattern like serialization.
 
-## Configuration
+# Configuration
 
 To change default behavior this lib provide 2 ways, one is to declare #define before include, one it's to provide your own config file.
 
@@ -668,7 +668,7 @@ To change default behavior this lib provide 2 ways, one is to declare #define be
 
 list of available config #define can be found  at beginning of <eti/eti.h> (see comment for documentation)
 
-## SlimMode
+# SlimMode
 Support slim mode when only basic type information are needed (no properties, no functions, no attributes, ...)
 
 Configuration ( default is 0)
