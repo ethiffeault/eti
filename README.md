@@ -649,8 +649,39 @@ namespace test_external
 ```
 
 # Templates
+template type are supported :
+```
+using namespace eti;
 
-template are supported, define it using :
+template <typename T>
+struct Foo
+{
+    ETI_STRUCT_EXT(Foo<T>, 
+        ETI_PROPERTIES
+        ( 
+            ETI_PROPERTY(Value)
+        ), 
+        ETI_METHODS() 
+    )
+
+    T Value;
+};
+```
+```
+    const Type& fooType = TypeOf<Foo<int>>();
+    std::cout << "foo name: " << fooType.Name << std::endl;
+    const Property* property = fooType.GetProperty("Value");
+    std::cout << "property name: " << property->Variable.Name << std::endl;
+    std::cout << "property type: " << property->Variable.Declaration.Type.Name << std::endl;
+```
+output:
+```
+    foo name: Foo<int>
+    property name: Value
+    property type: i32
+```
+
+member template variable are also supported, define it using :
 ```
     ETI_TEMPLATE_1(std::vector)
     ETI_TEMPLATE_2(std::map)
