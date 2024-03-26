@@ -718,7 +718,7 @@ namespace eti
 
 #define ETI_PROPERTIES(...) __VA_ARGS__
 
-#define ETI_PROPERTY(NAME, ...) ::eti::internal::MakeProperty<decltype(NAME)>(#NAME, ETI_INTERNAL_OFFSET_OF(Self, NAME), TypeOf<Self>(),  ::eti::internal::GetAttributes<Attribute>(__VA_ARGS__))
+#define ETI_PROPERTY(NAME, ...) ::eti::internal::MakeProperty<decltype(Self::NAME)>(#NAME, ETI_INTERNAL_OFFSET_OF(Self, Self::NAME), TypeOf<Self>(),  ::eti::internal::GetAttributes<Attribute>(__VA_ARGS__))
 
 #define ETI_INTERNAL_PROPERTY(...) \
     static const std::span<::eti::Property> GetProperties() \
@@ -795,7 +795,7 @@ namespace eti
         return type; \
     }
 
-#define ETI_INTERNAL_TYPE_IMPL(TYPE, KIND, PARENT, PROPERTY_VARIABLES) \
+#define ETI_INTERNAL_TYPE_IMPL(TYPE, KIND, PARENT, PROPERTIES, METHODS, TEMPLATES, ATTRIBUTES) \
     namespace eti \
     { \
         template<> \
@@ -803,7 +803,76 @@ namespace eti
         { \
             static const ::eti::Type& GetTypeStatic() \
             { \
-                static ::eti::Type type = ::eti::internal::MakeType<TYPE>(KIND, PARENT, PROPERTY_VARIABLES, {}, {}); \
+                static ::eti::Type type = ::eti::internal::MakeType<TYPE>(KIND, PARENT, PROPERTIES, METHODS, TEMPLATES, ATTRIBUTES); \
+                return type; \
+            } \
+        }; \
+    }
+
+#define ETI_STRUCT_EXTERNAL(TYPE, PROPERTIES, METHODS, ...) \
+    namespace eti \
+    { \
+        template <> \
+        struct TypeOfImpl<TYPE> \
+        { \
+            static const ::eti::Type& GetTypeStatic() \
+            { \
+                using Self = TYPE; \
+                static bool initializing = false; \
+                static ::eti::Type type; \
+                if (initializing == false) \
+                { \
+                    initializing = true; \
+                    static std::vector<::eti::Property> properties = { PROPERTIES }; \
+                    static std::vector<::eti::Method> methods =  { METHODS  }; \
+                    type = ::eti::internal::MakeType<Self>(::eti::Kind::Struct, nullptr, properties, methods, {}, ::eti::internal::GetAttributes<Attribute>(__VA_ARGS__)); \
+                } \
+                return type; \
+            } \
+        }; \
+    }
+
+#define ETI_BASE_EXTERNAL(TYPE, PROPERTIES, METHODS, ...) \
+    namespace eti \
+    { \
+        template <> \
+        struct TypeOfImpl<TYPE> \
+        { \
+            static const ::eti::Type& GetTypeStatic() \
+            { \
+                using Self = TYPE; \
+                static bool initializing = false; \
+                static ::eti::Type type; \
+                if (initializing == false) \
+                { \
+                    initializing = true; \
+                    static std::vector<::eti::Property> properties = { PROPERTIES }; \
+                    static std::vector<::eti::Method> methods =  { METHODS  }; \
+                    type = ::eti::internal::MakeType<Self>(::eti::Kind::Class, nullptr, properties, methods, {}, ::eti::internal::GetAttributes<Attribute>(__VA_ARGS__)); \
+                } \
+                return type; \
+            } \
+        }; \
+    }
+
+#define ETI_CLASS_EXTERNAL(TYPE, BASE, PROPERTIES, METHODS, ...) \
+    namespace eti \
+    { \
+        template <> \
+        struct TypeOfImpl<TYPE> \
+        { \
+            static const ::eti::Type& GetTypeStatic() \
+            { \
+                using Self = TYPE; \
+                static bool initializing = false; \
+                static ::eti::Type type; \
+                if (initializing == false) \
+                { \
+                    initializing = true; \
+                    static std::vector<::eti::Property> properties = { PROPERTIES }; \
+                    static std::vector<::eti::Method> methods =  { METHODS  }; \
+                    type = ::eti::internal::MakeType<Self>(::eti::Kind::Class, &TypeOf<BASE>(), properties, methods, {}, ::eti::internal::GetAttributes<Attribute>(__VA_ARGS__)); \
+                } \
                 return type; \
             } \
         }; \
@@ -812,8 +881,7 @@ namespace eti
 // use in global namespace
 
 #define ETI_POD(TYPE) \
-    ETI_INTERNAL_TYPE_IMPL(TYPE, ::eti::Kind::Pod, nullptr, {})
-
+    ETI_INTERNAL_TYPE_IMPL(TYPE, ::eti::Kind::Pod, nullptr, {}, {}, {}, {})
 
 #define ETI_POD_EXT(T, NAME) \
     namespace eti \
@@ -827,7 +895,7 @@ namespace eti
             } \
         }; \
     } \
-    ETI_INTERNAL_TYPE_IMPL(T, ::eti::Kind::Pod, nullptr, {})
+    ETI_INTERNAL_TYPE_IMPL(T, ::eti::Kind::Pod, nullptr, {}, {}, {}, {})
 
 #define ETI_TEMPLATE_1_IMPL(TYPE) \
     namespace eti \
@@ -1381,7 +1449,7 @@ namespace eti
     {
         static_assert(utils::IsCompleteType<BASE>, "Base type must be completely declared, missing include ?");
         static_assert(utils::IsCompleteType<T>, "Type must be completely declared, missing include ?");
-        return IsA(instance.GetType(), TypeOf<BASE>());
+        return IsA( instance.GetType(), TypeOf<BASE>());
     }
 
     template<typename T, typename BASE>

@@ -961,5 +961,76 @@ namespace test_17
     }
 }
 
+namespace third_party
+{
+    struct Point
+    {
+        float GetX() { return X; }
+        float GetY() { return Y; }
+        void SetX(float value) { X = value; }
+        void SetY(float value) { Y = value; }
+        float X = 0.0f;
+        float Y = 0.0f;
+    };
+
+    class Base
+    {
+    public:
+        virtual ~Base(){}
+        std::string_view GetName() { return "My name is Base"; }
+    };
+
+    class Foo
+    {
+    public:
+        std::string_view GetName() { return "My name is Foo"; }
+    };
+}
+
+ETI_STRUCT_EXTERNAL(::third_party::Point, ETI_PROPERTIES(ETI_PROPERTY(X), ETI_PROPERTY(Y)), ETI_METHODS(ETI_METHOD(GetX), ETI_METHOD(SetX)), eti::Accessibility(eti::Access::Public))
+ETI_BASE_EXTERNAL(::third_party::Base, ETI_PROPERTIES(), ETI_METHODS());
+ETI_CLASS_EXTERNAL(::third_party::Foo, ::third_party::Base, ETI_PROPERTIES(), ETI_METHODS(ETI_METHOD(GetName)));
+
+
+namespace test_18
+{
+    using namespace eti;
+    using namespace third_party;
+
+    TEST_CASE("test_18")
+    {
+        const Type& type = TypeOf<Point>();
+        REQUIRE(type.Name == "third_party::Point");
+        REQUIRE(type.GetProperty("X") != nullptr);
+        REQUIRE(type.GetProperty("Y") != nullptr);
+        REQUIRE(type.GetMethod("GetX") != nullptr);
+        REQUIRE(type.GetMethod("SetX") != nullptr);
+
+        Point p;
+        type.GetProperty("X")->Set(p, 1.0f);
+        REQUIRE(p.X == 1.0f);
+
+        type.GetMethod("SetX")->CallMethod(p, NoReturn, 2.0f);
+        REQUIRE(p.X == 2.0f);
+
+        float x;
+        type.GetMethod("GetX")->CallMethod(p, &x);
+        REQUIRE(p.X == 2.0f);
+
+        REQUIRE(type.Attributes.size() == 1);
+        REQUIRE(type.GetAttribute<::eti::Accessibility>() != nullptr);
+        REQUIRE(type.GetAttribute<::eti::Accessibility>()->Access == ::eti::Access::Public);
+
+        // note: IsA not available on external defined type since cannot add virtual method (will not compile)
+        //       but IsATyped is available
+        REQUIRE(IsATyped<Foo, Base>());
+        REQUIRE(TypeOf<Foo>().GetMethod("GetName") != nullptr);
+
+        Foo foo;
+        std::string_view name;
+        TypeOf<Foo>().GetMethod("GetName")->CallMethod(foo, &name);
+        REQUIRE(name == "My name is Foo");
+    }
+}
 
 #endif // #if !ETI_SLIM_MODE
