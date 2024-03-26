@@ -696,7 +696,6 @@ Compile:
 
 # Todo
 
-* const Method
 * Repository
 * Enum
 * Interface

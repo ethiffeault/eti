@@ -991,7 +991,6 @@ ETI_STRUCT_EXTERNAL(::third_party::Point, ETI_PROPERTIES(ETI_PROPERTY(X), ETI_PR
 ETI_BASE_EXTERNAL(::third_party::Base, ETI_PROPERTIES(), ETI_METHODS());
 ETI_CLASS_EXTERNAL(::third_party::Foo, ::third_party::Base, ETI_PROPERTIES(), ETI_METHODS(ETI_METHOD(GetName)));
 
-
 namespace test_18
 {
     using namespace eti;
@@ -1030,6 +1029,27 @@ namespace test_18
         std::string_view name;
         TypeOf<Foo>().GetMethod("GetName")->CallMethod(foo, &name);
         REQUIRE(name == "My name is Foo");
+    }
+}
+
+
+namespace test_20
+{
+    // const methods test
+    struct Point
+    {
+        ETI_STRUCT_EXT(Point, ETI_PROPERTIES(), ETI_METHODS( ETI_METHOD(GetX) ) )
+        int GetX() const { return X; }
+        int X = 0;
+    };
+
+    TEST_CASE("test_20")
+    {
+        Point p;
+        int x = -1;
+        TypeOf<Point>().GetMethod("GetX")->CallMethod(p, &x);
+        REQUIRE(x == 0);
+
     }
 }
 

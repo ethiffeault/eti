@@ -318,7 +318,6 @@ namespace eti
                 ETI_ASSERT(ret != nullptr, "internal error");
                 auto args_tuple = utils::VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
                 std::apply([&](auto... applyArgs) { *((RETURN*)ret) = ((OBJECT*)obj->*func)(*applyArgs...); }, args_tuple);
-
             }
         };
 
@@ -334,6 +333,30 @@ namespace eti
             }
         };
 
+        // member function call with return value
+        template<typename OBJECT, typename RETURN, typename... ARGS>
+        struct CallMemberFunctionImplConst
+        {
+            static void Call(RETURN(OBJECT::* func)(ARGS...)  const, void* obj, void* ret, std::span<void*> args)
+            {
+                ETI_ASSERT(ret != nullptr, "internal error");
+                auto args_tuple = utils::VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
+                std::apply([&](auto... applyArgs) { *((RETURN*)ret) = ((OBJECT*)obj->*func)(*applyArgs...); }, args_tuple);
+            }
+        };
+
+        // member function call void return
+        template<typename OBJECT, typename... ARGS>
+        struct CallMemberFunctionImplConst<OBJECT, void, ARGS...>
+        {
+            static void Call(void(OBJECT::* func)(ARGS...) const, void* obj, void* ret, std::span<void*> args)
+            {
+                ETI_ASSERT(ret == nullptr, "internal error");
+                auto args_tuple = utils::VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
+                std::apply([&](auto... applyArgs) { ((OBJECT*)obj->*func)(*applyArgs...); }, args_tuple);
+            }
+        };
+
         // member function call switch
         template<typename OBJECT, typename RETURN, typename... ARGS>
         void CallFunction(RETURN(OBJECT::* func)(ARGS...), void* obj, void* ret, std::span<void*> args)
@@ -342,6 +365,16 @@ namespace eti
             ETI_ASSERT(obj != nullptr, "internal error");
             CallMemberFunctionImpl<OBJECT, RETURN, ARGS...>::Call(func, obj, ret, args);
         }
+
+        // member function call switch
+        template<typename OBJECT, typename RETURN, typename... ARGS>
+        void CallFunction(RETURN(OBJECT::* func)(ARGS...) const, void* obj, void* ret, std::span<void*> args)
+        {
+            ETI_ASSERT(sizeof...(ARGS) == args.size(), "invalid size of args");
+            ETI_ASSERT(obj != nullptr, "internal error");
+            CallMemberFunctionImplConst<OBJECT, RETURN, ARGS...>::Call( func, obj, ret, args);
+        }
+
 
         // utility to know at compile time if a T have static method : const Type& GetTypeStatic()
         //
@@ -436,11 +469,17 @@ namespace eti
         template<typename OBJECT, typename RETURN, typename... ARGS>
         const Variable* GetFunctionReturn(RETURN(OBJECT::* func)(ARGS...));
 
+        template<typename OBJECT, typename RETURN, typename... ARGS>
+        const Variable* GetFunctionReturn(RETURN(OBJECT::* func)(ARGS...) const);
+
         template<typename RETURN, typename... ARGS>
         std::span<Variable> GetFunctionVariables(RETURN(*func)(ARGS...));
 
         template<typename OBJECT, typename RETURN, typename... ARGS>
         std::span<Variable> GetFunctionVariables(RETURN(OBJECT::* func)(ARGS...));
+
+        template<typename OBJECT, typename RETURN, typename... ARGS>
+        std::span<Variable> GetFunctionVariables(RETURN(OBJECT::* func)(ARGS...) const);
 
         static Method MakeMethod(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return = nullptr, std::span<const Variable> arguments = {}, std::vector<std::shared_ptr<Attribute>>&& attributes = {});
 
@@ -1016,6 +1055,13 @@ namespace eti
             return internal::GetVariable<RETURN>("");
         }
 
+        template<typename OBJECT, typename RETURN, typename... ARGS>
+        const Variable* GetFunctionReturn(RETURN(OBJECT::*)(ARGS...)  const)
+        {
+            return internal::GetVariable<RETURN>("");
+        }
+
+
         template<typename RETURN, typename... ARGS>
         std::span<Variable> GetFunctionVariables(RETURN(*)(ARGS...))
         {
@@ -1024,6 +1070,12 @@ namespace eti
 
         template<typename OBJECT, typename RETURN, typename... ARGS>
         std::span<Variable> GetFunctionVariables(RETURN(OBJECT::*)(ARGS...))
+        {
+            return internal::GetVariables<ARGS...>();
+        }
+
+        template<typename OBJECT, typename RETURN, typename... ARGS>
+        std::span<Variable> GetFunctionVariables(RETURN(OBJECT::*)(ARGS...) const)
         {
             return internal::GetVariables<ARGS...>();
         }
