@@ -33,8 +33,6 @@ rtti implementation that doesn't require c++ enable rtti. This lib is one header
 
 [Configuration](#Configuration)
 
-[SlimMode](#SlimMode)
-
 [UnitTests](#UnitTests)
 
 [Todo](#Todo)
@@ -395,7 +393,7 @@ namespace doc_enum
 }
 ETI_ENUM_IMPL(doc_enum::Day)
 ```
-note:  ETI_ENUM_IMPL() go in global namespace.
+note:  ETI_ENUM_IMPL() go in global scope.
 
 you have access like this :
 ```
@@ -805,24 +803,6 @@ To change default behavior this lib provide 2 ways, one is to declare #define be
 
 list of available config #define can be found  at beginning of <eti/eti.h> (see comment for documentation)
 
-# SlimMode
-Support slim mode when only basic type information are needed (no properties, no functions, no attributes, ...)
-
-Configuration ( default is 0)
-```
-#define ETI_SLIM_MODE 1
-```
-
-Available in slim mode: 
-* TypeOf<T>()
-* IsA<T>()
-* Cast<T>()
-* ETI_BASE
-* ETI_CLASS
-* ETI_STRUCT
-* ETI_POD
-* ETI_POD_EXT
-
 # UnitTests
 
 see ./unittest/eti_unittests.cpp
@@ -835,7 +815,9 @@ Compile:
 
 * Repository
 * Interface
-* Static member variable
+* Static variables
+* Packed (bitfield) variables
+* SlimMode (Sonly basic type information are needed (no properties, no functions, no attributes, ...))
 
 # Others
 

@@ -44,12 +44,6 @@
 
 #else
 
-    // Minimal
-    //  when ETI_SLIM_MODE is 1, only IsA<>, dynamic Cast<> and factory functions are available (no properties, no functions, no attributes, ...)
-    #ifndef ETI_SLIM_MODE
-        #define ETI_SLIM_MODE 0
-    #endif
-
     #ifndef ETI_ASSERT
         // Assert and Error
         #include <cassert>
@@ -106,14 +100,6 @@
     #endif
 
 #endif // ETI_CONFIG_HEADER
-
-
-#define ETI_FULL_MODE !ETI_SLIM_MODE
-
-// todo: implement slim mode
-#if ETI_SLIM_MODE
-    #error "slim mode not implemented yet"
-#endif
 
 #pragma endregion
 
