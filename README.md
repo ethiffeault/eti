@@ -431,7 +431,7 @@ for advance usage, Property provide unsafe method for direct access (offset from
     void* Property::UnSafeGetPtr(OBJECT& obj) const;
 ```
 
-## Methods
+# Methods
 
 Method wrap static and non-static member methods on struct/class.
 ```
@@ -540,7 +540,7 @@ output:
 {x = 1, y = 1} + {x = 2, y = 2} = {x = 3, y = 3}
 ```
 
-## Attributes
+# Attributes
 Attribute are supported on Struct, Class, Properties and Methods
 
 * Struct
@@ -575,7 +575,7 @@ May be user defined like this:
     std::cout << doc->Documentation;
 ```    
 
-## External
+# External
 Support external type declaration from third party library
 ```
 namespace third_party
@@ -646,7 +646,7 @@ namespace test_external
 }
 ```
 
-## Repository
+# Repository
 **WIP**
 
 To enable Repository use config : 
@@ -686,7 +686,7 @@ Available in slim mode:
 * ETI_POD
 * ETI_POD_EXT
 
-## UnitTests
+# UnitTests
 
 see ./unittest/eti_unittests.cpp
 
@@ -694,7 +694,7 @@ Compile:
 * eti_unittest.sln
 * clang++ -I . -std=c++20 -o unittest.exe ./unittest/eti_unittests.cpp
 
-## Todo
+# Todo
 
 * const Method
 * Repository
@@ -703,6 +703,6 @@ Compile:
 * Templates
 * Static member variable
 
-## Others
+# Others
 
 eti use awesome great unit tests framework: [doctest](https://github.com/doctest/doctest)
