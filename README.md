@@ -662,8 +662,14 @@ then you have access like this:
     using namespace eti;
     struct Foo
     {
-        ETI_STRUCT_EXT(Foo, ETI_PROPERTIES( ETI_PROPERTY(Values)), ETI_METHODS())
-            std::vector<int> Values;
+        ETI_STRUCT_EXT(Foo, 
+            ETI_PROPERTIES
+            ( 
+                ETI_PROPERTY(Values)
+            ), 
+            ETI_METHODS())
+
+        std::vector<int> Values;
     };
 
     void AddValue(const Property* property, void* foo, int value)
