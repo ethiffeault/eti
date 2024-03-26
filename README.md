@@ -382,7 +382,8 @@ namespace doc_enum
 {
     ETI_ENUM
     (
-        std::uint8_t, Day,
+        std::uint8_t, 
+        Day,
             Monday,
             Tuesday,
             Wednesday,
