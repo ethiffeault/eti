@@ -422,10 +422,10 @@ namespace eti
         Variable MakeVariable(std::string_view name, ::eti::Declaration declaration);
 
         template<typename T>
-        const Variable* GetVariableInstance(std::string_view name);
+        const Variable* GetVariable(std::string_view name);
 
         template<typename... ARGS>
-        std::span<Variable> GetVariableInstances();
+        std::span<Variable> GetVariables();
 
         //
         // Methods
@@ -457,7 +457,7 @@ namespace eti
         static Type MakeType(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {}, std::vector<std::shared_ptr<Attribute>> attributes = {});
 
         template<typename... ARGS>
-        std::span<const Type*> GetTypeInstances();
+        std::span<const Type*> GetType();
 
 
         template <typename... ARGS>
@@ -506,15 +506,18 @@ namespace eti
     // user may specialize this per type to have custom name (be careful to hash clash)
     //  ex: use in ETI_POD_EXT macro
     template<typename T>
-    constexpr auto GetTypeNameImpl()
+    struct TypeNameImpl
     {
-        return ETI_TYPE_NAME_FUNCTION<T>();
-    }
+        static constexpr auto Get()
+        {
+            return ETI_TYPE_NAME_FUNCTION<T>();
+        }
+    };
 
     template<typename T>
     constexpr auto GetTypeName()
     {
-        return GetTypeNameImpl<utils::RawType<T>>();
+        return TypeNameImpl<utils::RawType<T>>::Get();
     }
 
     template<typename T>
@@ -816,10 +819,13 @@ namespace eti
     namespace eti \
     { \
         template<> \
-        constexpr auto GetTypeNameImpl<::eti::utils::RawType<T>>() \
+        struct TypeNameImpl<T> \
         { \
-            return ::std::string_view(#NAME); \
-        } \
+            static constexpr auto Get() \
+            { \
+                return ::std::string_view(#NAME); \
+            } \
+        }; \
     } \
     ETI_INTERNAL_TYPE_IMPL(T, ::eti::Kind::Pod, nullptr, {})
 
@@ -914,14 +920,14 @@ namespace eti
         }
 
         template<typename T>
-        const Variable* GetVariableInstance(std::string_view name)
+        const Variable* GetVariable(std::string_view name)
         {
             static Variable variable = internal::MakeVariable(name, internal::MakeDeclaration<T>());
             return &variable;
         }
 
         template<typename... ARGS>
-        std::span<Variable> GetVariableInstances()
+        std::span<Variable> GetVariables()
         {
             static std::vector<Variable> variables = { internal::MakeVariable("", internal::MakeDeclaration<ARGS>())... };
             return variables;
@@ -933,25 +939,25 @@ namespace eti
         template<typename RETURN, typename... ARGS>
         const Variable* GetFunctionReturn(RETURN(*)(ARGS...))
         {
-            return internal::GetVariableInstance<RETURN>("");
+            return internal::GetVariable<RETURN>("");
         }
 
         template<typename OBJECT, typename RETURN, typename... ARGS>
         const Variable* GetFunctionReturn(RETURN(OBJECT::*)(ARGS...))
         {
-            return internal::GetVariableInstance<RETURN>("");
+            return internal::GetVariable<RETURN>("");
         }
 
         template<typename RETURN, typename... ARGS>
         std::span<Variable> GetFunctionVariables(RETURN(*)(ARGS...))
         {
-            return internal::GetVariableInstances<ARGS...>();
+            return internal::GetVariables<ARGS...>();
         }
 
         template<typename OBJECT, typename RETURN, typename... ARGS>
         std::span<Variable> GetFunctionVariables(RETURN(OBJECT::*)(ARGS...))
         {
-            return internal::GetVariableInstances<ARGS...>();
+            return internal::GetVariables<ARGS...>();
         }
 
         //
@@ -1060,7 +1066,7 @@ namespace eti
         }
 
         template<typename... ARGS>
-        std::span<const Type*> GetTypeInstances()
+        std::span<const Type*> GetType()
         {
             static const Type* types[] = { &TypeOfForward<ARGS>()... };
             return std::span<const Type*>(types, sizeof...(ARGS));

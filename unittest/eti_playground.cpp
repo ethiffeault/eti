@@ -6,8 +6,17 @@
 namespace eti
 {
 
-    template<typename T1>
-    struct TypeOfImpl<std::vector<T1>> 
+    template<typename T>
+    struct TypeNameImpl<std::vector<T>>
+    {
+        static constexpr auto Get()
+        {
+            return "vector<T>";
+        }
+    };
+
+    template<typename T>
+    struct TypeOfImpl<std::vector<T>> 
     { 
         static const ::eti::Type& GetTypeStatic() 
         {
@@ -19,15 +28,16 @@ namespace eti
 
                 static std::vector<::eti::Method> methods =
                 {
-                    ::eti::internal::MakeMethod("size", false, true, TypeOf<std::vector<T1>>(), [](void* obj, void* ret, std::span<void*>)
+                    ::eti::internal::MakeMethod("size", false, true, TypeOf<std::vector<T>>(), [](void* obj, void* ret, std::span<void*>)
                     {
-                        std::vector<T1>* vector = (std::vector<T1>*)obj;
+                        std::vector<T>* vector = (std::vector<T>*)obj;
                         size_t* r = (size_t*) ret;
                         *r = vector->size();
-                    }, ::eti::internal::GetVariableInstance<size_t>(""), {}, {})
+                    }, ::eti::internal::GetVariable<size_t>(""), {}, {})
                 };
-                
-                type = ::eti::internal::MakeType<std::vector<T1>>(::eti::Kind::Template, nullptr, {}, methods);
+
+                static std::vector<const Type*> templates = { &TypeOf<T>() };
+                type = ::eti::internal::MakeType<std::vector<T>>(::eti::Kind::Template, nullptr, {}, methods, templates);
             }
 
             return type;
