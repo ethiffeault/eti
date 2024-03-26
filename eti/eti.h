@@ -26,6 +26,8 @@
 #include <string_view>
 #include <span>
 #include <stdlib.h>
+#include <map>
+#include <vector>
 
 #pragma region Configuration
 
@@ -81,18 +83,18 @@
         #define ETI_TYPE_NAME_FUNCTION ::eti::GetTypeNameDefault
     #endif
 
-    #ifndef ETI_TRIVIAL_POD
+    #ifndef ETI_COMMON_TYPE
         // Define basic pod Type in global scope with convenient name :
         //  bool, u8, u16, u32, u64, s8, s16, s32, s64, f32 and f64
-        #define ETI_TRIVIAL_POD 1
+        #define ETI_COMMON_TYPE 1
     #endif
 
     #ifndef ETI_REPOSITORY
         // Enable Repository
         //
         //  All type will self register so it's possible to make at runtime:
-        //      const Type* type = Repository::GetType(fooId);
-        //      const Type* type = Repository::GetType("Foo");
+        //      const Type* type = Repository::GetTypes(fooId);
+        //      const Type* type = Repository::GetTypes("Foo");
         //
         // For stuff like serialization...
         //
@@ -496,7 +498,7 @@ namespace eti
         static Type MakeType(::eti::Kind kind, const Type* parent, std::span<const Property> properties = {}, std::span<const Method> methods = {}, std::span<const Type*> templates = {}, std::vector<std::shared_ptr<Attribute>> attributes = {});
 
         template<typename... ARGS>
-        std::span<const Type*> GetType();
+        std::span<const Type*> GetTypes();
 
 
         template <typename... ARGS>
@@ -572,6 +574,7 @@ namespace eti
         Class,      // ETI_BASE_EXT or ETI_CLASS_EXT
         Struct,     // ETI_STRUCT_EXT
         Pod,        // ETI_POD
+        Enum,       // ETI_ENUM
         Template,   // ETI_TEMPLATE_X
         Unknown,    // automatic declared type, when user not supply it's own declaration
         Forward     // forward type
@@ -789,7 +792,7 @@ namespace eti
 
 #define ETI_BASE_EXT(BASE, PROPERTIES, METHODS, ...) \
     public: \
-        virtual const ::eti::Type& GetType() const { return GetTypeStatic(); } \
+        virtual const ::eti::Type& GetTypes() const { return GetTypeStatic(); } \
         ETI_INTERNAL_TYPE_DECL(BASE, nullptr, ::eti::Kind::Class, __VA_ARGS__) \
         ETI_INTERNAL_PROPERTY(PROPERTIES) \
         ETI_INTERNAL_METHOD(METHODS) \
@@ -801,7 +804,7 @@ namespace eti
 #define ETI_CLASS_EXT(CLASS, BASE, PROPERTIES, METHODS, ...) \
     public: \
         using Super = BASE; \
-        const ::eti::Type& GetType() const override { return GetTypeStatic(); }\
+        const ::eti::Type& GetTypes() const override { return GetTypeStatic(); }\
         ETI_INTERNAL_TYPE_DECL(CLASS, &::eti::TypeOf<BASE>(), ::eti::Kind::Class, __VA_ARGS__) \
         ETI_INTERNAL_PROPERTY(PROPERTIES) \
         ETI_INTERNAL_METHOD(METHODS) \
@@ -935,58 +938,47 @@ namespace eti
     } \
     ETI_INTERNAL_TYPE_IMPL(T, ::eti::Kind::Pod, nullptr, {}, {}, {}, {})
 
-#define ETI_TEMPLATE_1_IMPL(TYPE) \
+#define ETI_TEMPLATE_1(TEMPLATE_NAME) \
     namespace eti \
-    {  \
-        template<typename T1> \
-        struct TypeOfImpl<TYPE<T1>>  \
-        {  \
-            static const Type& GetTypeStatic()  \
-            {  \
-                return ::eti::internal::MakeType<TYPE<T1>>(::eti::Kind::Template, nullptr, {}, {}, ::eti::TypesOf<T1>());  \
+    { \
+        template <typename T1> \
+        struct TypeOfImpl<TEMPLATE_NAME<T1>> \
+        { \
+            static const ::eti::Type& GetTypeStatic() \
+            { \
+                using Self = TEMPLATE_NAME<T1>; \
+                static bool initializing = false; \
+                static ::eti::Type type; \
+                if (initializing == false) \
+                { \
+                    initializing = true; \
+                    type = ::eti::internal::MakeType<Self>(::eti::Kind::Template, nullptr, {}, {}, ::eti::internal::GetTypes<T1>()); \
+                } \
+                return type; \
             } \
         }; \
     }
 
-#define ETI_TEMPLATE_2_IMPL(TYPE) \
+#define ETI_TEMPLATE_2(TEMPLATE_NAME) \
     namespace eti \
-    {  \
-        template<typename T1, typename T2> \
-        struct TypeOfImpl<TYPE<T1, T2>>  \
-        {  \
-            static const ::eti::Type& GetTypeStatic()  \
-            {  \
-                return ::eti::internal::MakeType<TYPE<T1, T2>>(::eti::Kind::Template, nullptr, {}, {}, ::eti::TypesOf<T1, T2>());  \
+    { \
+        template <typename T1, typename T2> \
+        struct TypeOfImpl<TEMPLATE_NAME<T1, T2>> \
+        { \
+            static const ::eti::Type& GetTypeStatic() \
+            { \
+                using Self = TEMPLATE_NAME<T1, T2>; \
+                static bool initializing = false; \
+                static ::eti::Type type; \
+                if (initializing == false) \
+                { \
+                    initializing = true; \
+                    type = ::eti::internal::MakeType<Self>(::eti::Kind::Template, nullptr, {}, {}, ::eti::internal::GetTypes<T1, T2>()); \
+                } \
+                return type; \
             } \
         }; \
     }
-
-//ETI_TEMPLATE_2_IMPL(std::vector)
-// vector hack util we support Method
-//namespace eti 
-//{  
-//    template<typename T1, typename T2> 
-//    struct TypeOfImpl<std::vector<T1, T2>>  
-//    {  
-//        static const Type& GetTypeStatic()  
-//        {
-//            static std::vector<Method> methods = 
-//            {
-//                internal::MakeMethod("Size", [](void* obj, void* r, std::span<void*>)
-//                {
-//                    std::vector<T1, T2>* array = (std::vector<T1, T2>*) obj;
-//                    int* returnValue = (int*)r;
-//                    *returnValue = (int)array->size();
-//                }),
-//                internal::MakeMethod("Get", nullptr),
-//                internal::MakeMethod("Add", nullptr),
-//                internal::MakeMethod("Remove", nullptr)
-//            };
-//            static Type type = Type::MakeType<std::vector<T1, T2>>(Kind::Template, nullptr, {},  methods, TypesOf<T1, T2>());
-//            return type;  
-//        } 
-//    }; 
-//}
 
 #pragma endregion
 
@@ -1185,7 +1177,7 @@ namespace eti
         }
 
         template<typename... ARGS>
-        std::span<const Type*> GetType()
+        std::span<const Type*> GetTypes()
         {
             static const Type* types[] = { &TypeOfForward<ARGS>()... };
             return std::span<const Type*>(types, sizeof...(ARGS));
@@ -1502,7 +1494,7 @@ namespace eti
     {
         static_assert(utils::IsCompleteType<BASE>, "Base type must be completely declared, missing include ?");
         static_assert(utils::IsCompleteType<T>, "Type must be completely declared, missing include ?");
-        return IsA( instance.GetType(), TypeOf<BASE>());
+        return IsA( instance.GetTypes(), TypeOf<BASE>());
     }
 
     template<typename T, typename BASE>
@@ -1596,12 +1588,11 @@ namespace eti
         Access Access = Access::Unknown;
     };
 
-
 #pragma endregion
 
  }
 
-#if ETI_TRIVIAL_POD
+#if ETI_COMMON_TYPE
 
 ETI_POD(bool);
 
@@ -1618,4 +1609,7 @@ ETI_POD_EXT(std::uint64_t, s64);
 ETI_POD_EXT(std::float_t, f32);
 ETI_POD_EXT(std::double_t, f64);
 
-#endif
+ETI_TEMPLATE_1(std::vector)
+ETI_TEMPLATE_2(std::map)
+
+#endif // #if ETI_COMMON_TYPE

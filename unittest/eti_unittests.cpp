@@ -1064,7 +1064,12 @@ namespace test_21
 
     void AddValue(const Property* property, void* foo, int value)
     {
-        if (property->Variable.Declaration.Type == TypeOf<std::vector<int>>())
+        const Type& propertyType = property->Variable.Declaration.Type;
+
+        if (propertyType.Kind == Kind::Template &&
+            propertyType.Templates.size() == 1 &&
+            *propertyType.Templates[0] == TypeOf<int>()  &&
+            propertyType == TypeOf<std::vector<int>>())
         {
             // ok to cast here, we validated type
             std::vector<int>* vector = (std::vector<int>*)property->UnSafeGetPtr(foo);

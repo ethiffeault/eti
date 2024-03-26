@@ -650,18 +650,30 @@ namespace test_external
 
 # Templates
 
-template are supported for type info : 
+template are supported, define it using :
+```
+    ETI_TEMPLATE_1(std::vector)
+    ETI_TEMPLATE_2(std::map)
+```
+note: std::vector and std::map are automatically define if your config use ETI_COMMON_TYPE (enabled per default)
+
+then you have access like this:
 ```
     using namespace eti;
     struct Foo
     {
         ETI_STRUCT_EXT(Foo, ETI_PROPERTIES( ETI_PROPERTY(Values)), ETI_METHODS())
-        std::vector<int> Values;
+            std::vector<int> Values;
     };
 
     void AddValue(const Property* property, void* foo, int value)
     {
-        if (property->Variable.Declaration.Type == TypeOf<std::vector<int>>())
+        const Type& propertyType = property->Variable.Declaration.Type;
+
+        if (propertyType.Kind == Kind::Template &&
+            propertyType.Templates.size() == 1 &&
+            *propertyType.Templates[0] == TypeOf<int>()  &&
+            propertyType == TypeOf<std::vector<int>>())
         {
             // ok to cast here, we validated type
             std::vector<int>* vector = (std::vector<int>*)property->UnSafeGetPtr(foo);
@@ -669,12 +681,19 @@ template are supported for type info :
         }
     }
 
-    TEST_CASE("templates")
+    TEST_CASE("test_21")
     {
         Foo foo;
         AddValue(TypeOf<Foo>().GetProperty("Values"), &foo, 123);
         REQUIRE(foo.Values.size() == 1);
         REQUIRE(foo.Values[0] == 123);
+    }
+```
+note that if you do not define your template, you still have access to :
+```
+    if ( propertyType == TypeOf<std::vector<int>>() )
+    {
+        // ....
     }
 ```
 
