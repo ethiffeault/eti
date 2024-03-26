@@ -25,6 +25,8 @@ rtti implementation that doesn't require c++ enable rtti. This lib is one header
 
 [External](#External)
 
+[Templates](#Templates)
+
 [Repository](#Repository)
 
 [Configuration](#Configuration)
@@ -646,6 +648,36 @@ namespace test_external
 }
 ```
 
+# Templates
+
+template are supported for type info : 
+```
+    using namespace eti;
+    struct Foo
+    {
+        ETI_STRUCT_EXT(Foo, ETI_PROPERTIES( ETI_PROPERTY(Values)), ETI_METHODS())
+        std::vector<int> Values;
+    };
+
+    void AddValue(const Property* property, void* foo, int value)
+    {
+        if (property->Variable.Declaration.Type == TypeOf<std::vector<int>>())
+        {
+            // ok to cast here, we validated type
+            std::vector<int>* vector = (std::vector<int>*)property->UnSafeGetPtr(foo);
+            vector->push_back(value);
+        }
+    }
+
+    TEST_CASE("templates")
+    {
+        Foo foo;
+        AddValue(TypeOf<Foo>().GetProperty("Values"), &foo, 123);
+        REQUIRE(foo.Values.size() == 1);
+        REQUIRE(foo.Values[0] == 123);
+    }
+```
+
 # Repository
 **WIP**
 
@@ -699,7 +731,6 @@ Compile:
 * Repository
 * Enum
 * Interface
-* Templates
 * Static member variable
 
 # Others

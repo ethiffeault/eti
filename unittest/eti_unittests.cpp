@@ -741,7 +741,7 @@ namespace test_15
 
         {
             const Property* p = TypeOf<Foo>().GetProperty("intValue");
-            void* ptr = p->UnSafeGetPtr(foo);
+            void* ptr = p->UnSafeGetPtr(&foo);
             REQUIRE(ptr == &foo.intValue);
 
             p->Set(foo, 12);
@@ -751,7 +751,7 @@ namespace test_15
 
         {
             const Property* p = TypeOf<Foo>().GetProperty("intConstValue");
-            void* ptr = p->UnSafeGetPtr(foo);
+            void* ptr = p->UnSafeGetPtr(&foo);
             REQUIRE(ptr == &foo.intConstValue);
 
             p->Set(foo, 12);
@@ -761,7 +761,7 @@ namespace test_15
 
         {
             const Property* p = TypeOf<Foo>().GetProperty("intPtr");
-            void* ptr = p->UnSafeGetPtr(foo);
+            void* ptr = p->UnSafeGetPtr(&foo);
             REQUIRE(ptr == &foo.intPtr);
 
             p->Set(foo, &someValue);
@@ -771,7 +771,7 @@ namespace test_15
 
         {
             const Property* p = TypeOf<Foo>().GetProperty("intConstPtr");
-            void* ptr = p->UnSafeGetPtr(foo);
+            void* ptr = p->UnSafeGetPtr(&foo);
             REQUIRE(ptr == &foo.intConstPtr);
 
             p->Set(foo, &someValue);
@@ -1050,6 +1050,34 @@ namespace test_20
         TypeOf<Point>().GetMethod("GetX")->CallMethod(p, &x);
         REQUIRE(x == 0);
 
+    }
+}
+
+namespace test_21
+{
+    using namespace eti;
+    struct Foo
+    {
+        ETI_STRUCT_EXT(Foo, ETI_PROPERTIES( ETI_PROPERTY(Values)), ETI_METHODS())
+            std::vector<int> Values;
+    };
+
+    void AddValue(const Property* property, void* foo, int value)
+    {
+        if (property->Variable.Declaration.Type == TypeOf<std::vector<int>>())
+        {
+            // ok to cast here, we validated type
+            std::vector<int>* vector = (std::vector<int>*)property->UnSafeGetPtr(foo);
+            vector->push_back(value);
+        }
+    }
+
+    TEST_CASE("test_21")
+    {
+        Foo foo;
+        AddValue(TypeOf<Foo>().GetProperty("Values"), &foo, 123);
+        REQUIRE(foo.Values.size() == 1);
+        REQUIRE(foo.Values[0] == 123);
     }
 }
 

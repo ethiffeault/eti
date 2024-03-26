@@ -631,8 +631,7 @@ namespace eti
         template <typename T>
         const T* HaveAttribute() const;
 
-        template <typename OBJECT>
-        void* UnSafeGetPtr(OBJECT& obj) const;
+        void* UnSafeGetPtr(void* obj) const;
 
         template <typename OBJECT, typename T>
         void Set(OBJECT& obj, const T& value) const;
@@ -829,7 +828,7 @@ namespace eti
         if (initializing == false) \
         { \
             initializing = true; \
-            type = ::eti::internal::template MakeType<TYPE>(KIND, PARENT, TYPE::GetProperties(), TYPE::GetMethods(), {}, ::eti::internal::GetAttributes<Attribute>(__VA_ARGS__)); \
+            type = ::eti::internal::template MakeType<TYPE>(KIND, PARENT, TYPE::GetProperties(), TYPE::GetMethods(), {}, ::eti::internal::GetAttributes<::eti::Attribute>(__VA_ARGS__)); \
         } \
         return type; \
     }
@@ -1225,28 +1224,28 @@ namespace eti
         return GetAttribute<T>() != nullptr;
     }
 
-    template <typename OBJECT>
-    void* Property::UnSafeGetPtr(OBJECT& obj) const
+    inline void* Property::UnSafeGetPtr(void* obj) const
     {
-        ETI_ASSERT(IsA(TypeOf<OBJECT>(), Parent), "Invalid object type" << TypeOf<OBJECT>().Name << ", should be: " << Parent.Name);
-        return ((char*)&obj + Offset);
+        return ((char*)obj + Offset);
     }
 
     template <typename OBJECT, typename T>
     void Property::Set(OBJECT& obj, const T& value) const
     {
+        ETI_ASSERT(IsA(TypeOf<OBJECT>(), Parent), "Invalid object type" << TypeOf<OBJECT>().Name << ", should be: " << Parent.Name);
+
         if (Variable.Declaration.IsPtr)
         {
             ETI_ASSERT(Variable.Declaration.IsPtr && std::is_pointer_v<T>, "try to set a pointer property providing not pointer value");
             ETI_ASSERT(IsA( TypeOf<T>(), Variable.Declaration.Type ), "bad pointer type: " << TypeOf<T>().Name << "trying to set ptr of type: " << Variable.Declaration.Type.Name);
-            T* ptr = (T*)UnSafeGetPtr(obj);
+            T* ptr = (T*)UnSafeGetPtr(&obj);
             *ptr = value;
         }
         else
         {
             ETI_ASSERT(!Variable.Declaration.IsPtr && !std::is_pointer_v<T>, "try to set a value property providing a pointer value");
             ETI_ASSERT( TypeOf<T>() == Variable.Declaration.Type, "bad value type: " << TypeOf<T>().Name << "trying to set value of type: " << Variable.Declaration.Type.Name);
-            T* ptr = (T*)UnSafeGetPtr(obj);
+            T* ptr = (T*)UnSafeGetPtr(&obj);
             *ptr = value;
         }
     }
@@ -1254,18 +1253,20 @@ namespace eti
     template <typename OBJECT, typename T>
     void Property::Get(OBJECT& obj, T& value) const
     {
+        ETI_ASSERT(IsA(TypeOf<OBJECT>(), Parent), "Invalid object type" << TypeOf<OBJECT>().Name << ", should be: " << Parent.Name);
+
         if (Variable.Declaration.IsPtr)
         {
             ETI_ASSERT(Variable.Declaration.IsPtr && std::is_pointer_v<T>, "try to set a pointer property providing not pointer value");
             ETI_ASSERT( IsA( TypeOf<T>(), Variable.Declaration.Type ), "bad pointer type: " << TypeOf<T>().Name << "trying to set ptr of type: " << Variable.Declaration.Type.Name);
-            T* ptr = (T*)UnSafeGetPtr(obj);
+            T* ptr = (T*)UnSafeGetPtr(&obj);
             value = *ptr;
         }
         else
         {
             ETI_ASSERT(!Variable.Declaration.IsPtr && !std::is_pointer_v<T>, "try to set a value property providing a pointer value");
             ETI_ASSERT( TypeOf<T>() == Variable.Declaration.Type, "bad value type: " << TypeOf<T>().Name << "trying to set value of type: " << Variable.Declaration.Type.Name);
-            T* ptr = (T*)UnSafeGetPtr(obj);
+            T* ptr = (T*)UnSafeGetPtr(&obj);
             value = *ptr;
         }
     }
