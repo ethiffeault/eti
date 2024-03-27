@@ -3,43 +3,43 @@ Extended Type Information for c++
 
 rtti implementation that doesn't require c++ enable rtti. This lib is one header only without any external dependencies.
 
-[Introduction](#Introduction)
+[Introduction](##Introduction)
 
-[Type](#Type)
+[Type](##Type)
 
-[IsA](#IsA)
+[IsA](##IsA)
 
-[Cast](#Cast)
+[Cast](##Cast)
 
-[POD](#POD)
+[POD](##POD)
 
-[Struct](#Struct)
+[Struct](##Struct)
 
-[Class](#Class)
+[Class](##Class)
 
-[Enum](#Enum)
+[Enum](##Enum)
 
-[Properties](#Properties)
+[Properties](##Properties)
 
-[Methods](#Methods)
+[Methods](##Methods)
 
-[Attributes](#Attributes)
+[Attributes](##Attributes)
 
-[External](#External)
+[External](##External)
 
-[Templates](#Templates)
+[Templates](##Templates)
 
-[Repository](#Repository)
+[Repository](##Repository)
 
-[Configuration](#Configuration)
+[Configuration](##Configuration)
 
-[UnitTests](#UnitTests)
+[UnitTests](##UnitTests)
 
-[Todo](#Todo)
+[Todo](##Todo)
 
-[Others](#Others)
+[Others](##Others)
 
-# Introduction
+## Introduction
 
 Using eti is straightforward, simple usage:
 ```
@@ -159,7 +159,9 @@ void main()
     }
 }
 ```
-# Type
+
+## Type
+
 Core type of eti, Type define all aspect of a given type T
 
 To get Type from any given type use: 
@@ -187,7 +189,9 @@ const Type& intType = eti::TypeOf<int>();
         Attributes;         // Attributes
     }
 ```
-# IsA
+
+## IsA
+
 IsA to know if a type is a base type of another type
 
 usage:
@@ -241,7 +245,8 @@ foo isa Doo ? 0
 doo isa Doo ? 1
 ```
 
-# Cast
+## Cast
+
 dynamic cast of T, when not match, return nullptr or not compile on incompatible type.
 usage:
 ```
@@ -287,7 +292,9 @@ invalid
 valid
 invalid
 ```
-# POD
+
+## POD
+
 define your own pod type using ETI_POD:
 ```
     ETI_POD(bool)
@@ -296,25 +303,29 @@ or user named pod using ETI_POD_EXT:
 ```
     ETI_POD_EXT(std::int8_t, i8);
 ```
-by default ETI_TRIVIAL_POD is defined to 1, unless you see it to 0, will defined basic pods:
+by default ETI_COMMON_TYPE is defined to 1, unless you set it to 0, will define:
 ```
     ETI_POD(bool);
 
-    ETI_POD_EXT(std::int8_t, i8);
-    ETI_POD_EXT(std::int16_t, i16);
-    ETI_POD_EXT(std::int32_t, i32);
-    ETI_POD_EXT(std::int64_t, i64);
+    ETI_POD_EXT(std::int8_t, s8);
+    ETI_POD_EXT(std::int16_t, s16);
+    ETI_POD_EXT(std::int32_t, s32);
+    ETI_POD_EXT(std::int64_t, s64);
 
-    ETI_POD_EXT(std::uint8_t, s8);
-    ETI_POD_EXT(std::uint16_t, s16);
-    ETI_POD_EXT(std::uint32_t, s32);
-    ETI_POD_EXT(std::uint64_t, s64);
+    ETI_POD_EXT(std::uint8_t, u8);
+    ETI_POD_EXT(std::uint16_t, u16);
+    ETI_POD_EXT(std::uint32_t, u32);
+    ETI_POD_EXT(std::uint64_t, u64);
 
     ETI_POD_EXT(std::float_t, f32);
     ETI_POD_EXT(std::double_t, f64);
+
+    ETI_TEMPLATE_1(std::vector)
+    ETI_TEMPLATE_2(std::map)
 ```
 
-# Struct
+## Struct
+
 use ETI_STRUCT or ETI_STRUCT_EXT to define struct, struct are base type, no virtual table and no inheritance:
 ```
     struct Point
@@ -327,7 +338,7 @@ use ETI_STRUCT or ETI_STRUCT_EXT to define struct, struct are base type, no virt
             ETI_METHODS(
                 ETI_METHOD(SetX),
                 ETI_METHOD(Add)),
-            [, attibutes...])
+            [attributes...])
 
         void SetX(int x)
         {
@@ -349,8 +360,10 @@ use ETI_STRUCT or ETI_STRUCT_EXT to define struct, struct are base type, no virt
         int Y = 0;
     };
 ```
-# Class
-Use ETI_BASE or ETI_BASE_EXT to define class, class are dynamic object with virtual table. eti provide an optional common base class eti::Object
+
+## Class
+
+Use ETI_BASE, ETI_BASE_EXT, ETI_CLASS or ETI_CLASS_EXT to define classes. eti provide an optional common base class eti::Object
 ```
     class Object
     {
@@ -359,12 +372,12 @@ Use ETI_BASE or ETI_BASE_EXT to define class, class are dynamic object with virt
         virtual ~Object(){}
     };
 
-    class Foo
+    class Foo : public Object
     {
         ETI_CLASS(Foo, Object)
     };    
 
-    class Doo
+    class Doo : public Object
     {
         ETI_CLASS_EXT(Doo, Object, PROPERTIES(), METHODS() [, attributes...])
     };    
@@ -372,7 +385,8 @@ Use ETI_BASE or ETI_BASE_EXT to define class, class are dynamic object with virt
 ```
 you can define you own base class as needed.
 
-# Enum
+## Enum
+
 enum can be defined in global scope, namespace or as inner type of struct/class
 
 ```
@@ -404,7 +418,6 @@ you have access like this :
             std::cout << "    name: " << type.GetEnumValueName(i) << ", value: " << i << std::endl;
 
 ```
-
 ```
         // output: 
         //      enum: enum Day of type u8 with 7 values
@@ -419,7 +432,8 @@ you have access like this :
 
 ```
 
-# Properties
+## Properties
+
 Property wrap member variables of class/struct
 ```
     Property
@@ -432,7 +446,6 @@ Property wrap member variables of class/struct
         Attributes; // all attributes
     }
 ```
-
 ```
     class Person
     {
@@ -466,6 +479,8 @@ Property wrap member variables of class/struct
         cout << "Person::Age member is of type : " << ageProperty->Variable.Declaration.Type.Name
         << endl;
     }
+```
+```    
     // output
     //  Init Age is 0
     //  Adult Age is 21
@@ -480,7 +495,7 @@ for advance usage, Property provide unsafe method for direct access (offset from
     void* Property::UnSafeGetPtr(OBJECT& obj) const;
 ```
 
-# Methods
+## Methods
 
 Method wrap static and non-static member methods on struct/class.
 ```
@@ -589,7 +604,8 @@ output:
 {x = 1, y = 1} + {x = 2, y = 2} = {x = 3, y = 3}
 ```
 
-# Attributes
+## Attributes
+
 Attribute are supported on Struct, Class, Properties and Methods
 
 * Struct
@@ -624,8 +640,10 @@ May be user defined like this:
     std::cout << doc->Documentation;
 ```    
 
-# External
+## External
+
 Support external type declaration from third party library
+
 ```
 namespace third_party
 {
@@ -695,8 +713,9 @@ namespace test_external
 }
 ```
 
-# Templates
-template type are supported :
+## Templates
+
+template type are supported:
 ```
 using namespace eti;
 
@@ -781,29 +800,30 @@ note that if you do not define your template, you still have access to :
     }
 ```
 
-# Repository
+## Repository
+
 **WIP**
 
 To enable Repository use config : 
-* #define ETI_REPOSITORY 1
+* ##define ETI_REPOSITORY 1
 
 Repository contain type mapping from TypeId to Type and from Name to Type. Practical for pattern like serialization.
 
-# Configuration
+## Configuration
 
-To change default behavior this lib provide 2 ways, one is to declare #define before include, one it's to provide your own config file.
+To change default behavior this lib provide 2 ways, one is to declare ##define before include, one it's to provide your own config file.
 
-* #define before include:
+* ##define before include:
 
-  define what you need before #include <eti/eti.h>
+  define what you need before ##include <eti/eti.h>
 
 * config file:
 
-  #define ETI_CONFIG_HEADER 1 in <eti/eti.h> and create "eti_config.h" with your configurations.
+  ##define ETI_CONFIG_HEADER 1 in <eti/eti.h> and create "eti_config.h" with your configurations.
 
-list of available config #define can be found  at beginning of <eti/eti.h> (see comments)
+list of available config ##define can be found  at beginning of <eti/eti.h> (see comments)
 
-# UnitTests
+## UnitTests
 
 see ./unittest/eti_unittests.cpp
 
@@ -811,7 +831,7 @@ Compile:
 * eti_unittest.sln
 * clang++ -I . -std=c++20 -o unittest.exe ./unittest/eti_unittests.cpp
 
-# Todo
+## Todo
 
 * Repository
 * Interface
@@ -819,6 +839,6 @@ Compile:
 * Packed (bitfield) variables
 * SlimMode (Sonly basic type information are needed (no properties, no functions, no attributes, ...))
 
-# Others
+## Others
 
 eti use awesome great unit tests framework: [doctest](https://github.com/doctest/doctest)
