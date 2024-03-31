@@ -28,8 +28,6 @@
 
 #include <eti/eti.h>
 
-#if !ETI_SLIM_MODE
-
 using namespace eti;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1092,4 +1090,38 @@ namespace test_21
     }
 }
 
-#endif // #if !ETI_SLIM_MODE
+namespace test_22
+{
+    ETI_ENUM
+    (
+        std::uint8_t, Day,
+            Monday,
+            Tuesday,
+            Wednesday,
+            Thursday,
+            Friday,
+            Saturday,
+            Sunday
+    )
+
+    struct Time
+    {
+        ETI_STRUCT_EXT(Time, 
+            ETI_PROPERTIES
+            (
+                ETI_PROPERTY(Day)
+            ), ETI_METHODS())
+        Day Day = Day::Friday;
+    };
+
+    TEST_CASE("test_22")
+    {
+        Time time;
+        Day day;
+        TypeOf<Time>().GetProperty("Day")->Get(time, day);
+        REQUIRE(day == Day::Friday);
+        TypeOf<Time>().GetProperty("Day")->Set(time, Day::Monday);
+        REQUIRE(time.Day == Day::Monday);
+    }
+}
+ETI_ENUM_IMPL(test_22::Day)
