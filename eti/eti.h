@@ -19,6 +19,8 @@
 //  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
+//
+// https://github.com/ethiffeault/eti
 
 #pragma once
 
@@ -1707,5 +1709,13 @@ ETI_POD_EXT(std::double_t, f64);
 
 ETI_TEMPLATE_1(std::vector)
 ETI_TEMPLATE_2(std::map)
+
+
+class Object
+{
+    ETI_BASE(Object)
+public:
+    virtual ~Object(){}
+};
 
 #endif // #if ETI_COMMON_TYPE
