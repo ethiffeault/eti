@@ -1125,3 +1125,40 @@ namespace test_22
     }
 }
 ETI_ENUM_IMPL(test_22::Day)
+
+namespace test_23
+{
+    struct Time
+    {
+        ETI_ENUM
+        (
+            std::uint8_t, Day,
+                Monday,
+                Tuesday,
+                Wednesday,
+                Thursday,
+                Friday,
+                Saturday,
+                Sunday
+        )
+
+        ETI_STRUCT_EXT(Time, 
+            ETI_PROPERTIES
+            (
+                ETI_PROPERTY(CurrentDay)
+            ), ETI_METHODS())
+
+        Day CurrentDay = Day::Friday;
+    };
+
+    TEST_CASE("test_22")
+    {
+        Time time;
+        Time::Day day;
+        TypeOf<Time>().GetProperty("CurrentDay")->Get(time, day);
+        REQUIRE(day == Time::Day::Friday);
+        TypeOf<Time>().GetProperty("CurrentDay")->Set(time, Time::Day::Monday);
+        REQUIRE(time.CurrentDay == Time::Day::Monday);
+    }
+}
+ETI_ENUM_IMPL(test_23::Time::Day)
