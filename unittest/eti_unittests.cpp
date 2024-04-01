@@ -1296,4 +1296,57 @@ namespace test_24
 
         }
     }
+
+    // vector
+    TEST_CASE("test_25")
+    {
+        std::vector<int> vector;
+        int i = 2;
+
+        const Type& type = TypeOf<std::vector<int>>();
+
+        // push back
+        const Method* pushBackMethod = type.GetMethod("push_back");
+        pushBackMethod->CallMethod(vector,NoReturn, &i);
+        REQUIRE(vector.size() == 1);
+        REQUIRE(vector[0] == 2);
+
+        // at (operator[])
+        const Method* atMethod = type.GetMethod("at");
+        int* atValue;
+        atMethod->CallMethod(vector, &atValue, (size_t)0);
+        REQUIRE(*atValue == 2);
+        *atValue = 1;
+        REQUIRE(vector[0] == 1);
+
+        // size
+        const Method* sizeMethod = type.GetMethod("size");
+        size_t size;
+        sizeMethod->CallMethod(vector, &size);
+        REQUIRE(size == 1);
+
+        // erase
+        const Method* eraseMethod = type.GetMethod("erase");
+        std::vector<int>::iterator itResult;
+        std::vector<int>::const_iterator begin = vector.begin();
+        eraseMethod->CallMethod(vector, &itResult, begin);
+        REQUIRE(vector.size() == 0);
+    }
+
+    // map
+    TEST_CASE("test_26")
+    {
+        std::map<std::string, int> map;
+        map["1212"] = 1212;
+
+        const Type& type = TypeOf<std::map<std::string, int>>();
+
+        // size
+        const Method* sizeMethod = type.GetMethod("size");
+        size_t size;
+        sizeMethod->CallMethod(map, &size);
+        REQUIRE(size == 1);
+
+        map.insert(std::make_pair("3434", 3434));
+    }
 }

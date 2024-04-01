@@ -486,13 +486,13 @@ namespace eti
         const Variable* GetFunctionReturn(RETURN(OBJECT::* func)(ARGS...) const);
 
         template<typename RETURN, typename... ARGS>
-        std::span<Variable> GetFunctionVariables(RETURN(*func)(ARGS...));
+        std::span<Variable> GetFunctionArguments(RETURN(*func)(ARGS...));
 
         template<typename OBJECT, typename RETURN, typename... ARGS>
-        std::span<Variable> GetFunctionVariables(RETURN(OBJECT::* func)(ARGS...));
+        std::span<Variable> GetFunctionArguments(RETURN(OBJECT::* func)(ARGS...));
 
         template<typename OBJECT, typename RETURN, typename... ARGS>
-        std::span<Variable> GetFunctionVariables(RETURN(OBJECT::* func)(ARGS...) const);
+        std::span<Variable> GetFunctionArguments(RETURN(OBJECT::* func)(ARGS...) const);
 
         static Method MakeMethod(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return = nullptr, std::span<const Variable> arguments = {}, std::vector<std::shared_ptr<Attribute>>&& attributes = {});
 
@@ -810,7 +810,20 @@ namespace eti
             ::eti::utils::CallFunction(&Self::NAME, obj, _return, args); \
         }, \
         ::eti::internal::GetFunctionReturn(&Self::NAME), \
-        ::eti::internal::GetFunctionVariables(&Self::NAME), \
+        ::eti::internal::GetFunctionArguments(&Self::NAME), \
+        ::eti::internal::GetAttributes<::eti::Attribute>(__VA_ARGS__))
+
+#define ETI_METHOD_OVERLOAD(NAME, METHOD_TYPE, ...) \
+    ::eti::internal::MakeMethod(#NAME, \
+        ::eti::utils::IsMethodStatic<decltype((METHOD_TYPE)&Self::NAME)>, \
+        ::eti::utils::IsMethodConst<decltype((METHOD_TYPE)&Self::NAME)>, \
+        ::eti::TypeOf<Self>(), \
+        [](void* obj, void* _return, std::span<void*> args) \
+        { \
+            ::eti::utils::CallFunction((METHOD_TYPE)&Self::NAME, obj, _return, args); \
+        }, \
+        ::eti::internal::GetFunctionReturn((METHOD_TYPE)&Self::NAME), \
+        ::eti::internal::GetFunctionArguments((METHOD_TYPE)&Self::NAME), \
         ::eti::internal::GetAttributes<::eti::Attribute>(__VA_ARGS__))
 
 #define ETI_INTERNAL_METHOD(...) \
@@ -1003,7 +1016,7 @@ namespace eti
     }
 
 
-#define ETI_TEMPLATE_1(TEMPLATE_NAME) \
+#define ETI_TEMPLATE_1_EXTERNAL(TEMPLATE_NAME, PROPERTIES, METHODS, ...) \
     namespace eti \
     { \
         template <typename T1> \
@@ -1017,14 +1030,16 @@ namespace eti
                 if (initializing == false) \
                 { \
                     initializing = true; \
-                    type = ::eti::internal::MakeType<Self>(::eti::Kind::Template, nullptr, {}, {}, ::eti::internal::GetTypes<T1>()); \
+                    static std::vector<::eti::Property> properties = { PROPERTIES }; \
+                    static std::vector<::eti::Method> methods =  { METHODS  }; \
+                    type = ::eti::internal::MakeType<Self>(::eti::Kind::Template, nullptr, properties, methods, ::eti::internal::GetTypes<T1>(), ::eti::internal::GetAttributes<::eti::Attribute>(__VA_ARGS__)); \
                 } \
                 return type; \
             } \
         }; \
     }
 
-#define ETI_TEMPLATE_2(TEMPLATE_NAME) \
+#define ETI_TEMPLATE_2_EXTERNAL(TEMPLATE_NAME, PROPERTIES, METHODS, ...) \
     namespace eti \
     { \
         template <typename T1, typename T2> \
@@ -1032,13 +1047,15 @@ namespace eti
         { \
             static const ::eti::Type& GetTypeStatic() \
             { \
-                using Self = TEMPLATE_NAME<T1, T2>; \
+                using Self = TEMPLATE_NAME<T1,T2>; \
                 static bool initializing = false; \
                 static ::eti::Type type; \
                 if (initializing == false) \
                 { \
                     initializing = true; \
-                    type = ::eti::internal::MakeType<Self>(::eti::Kind::Template, nullptr, {}, {}, ::eti::internal::GetTypes<T1, T2>()); \
+                    static std::vector<::eti::Property> properties = { PROPERTIES }; \
+                    static std::vector<::eti::Method> methods =  { METHODS  }; \
+                    type = ::eti::internal::MakeType<Self>(::eti::Kind::Template, nullptr, properties, methods, ::eti::internal::GetTypes<T1,T2>(), ::eti::internal::GetAttributes<::eti::Attribute>(__VA_ARGS__)); \
                 } \
                 return type; \
             } \
@@ -1119,19 +1136,19 @@ namespace eti
 
 
         template<typename RETURN, typename... ARGS>
-        std::span<Variable> GetFunctionVariables(RETURN(*)(ARGS...))
+        std::span<Variable> GetFunctionArguments(RETURN(*)(ARGS...))
         {
             return internal::GetVariables<ARGS...>();
         }
 
         template<typename OBJECT, typename RETURN, typename... ARGS>
-        std::span<Variable> GetFunctionVariables(RETURN(OBJECT::*)(ARGS...))
+        std::span<Variable> GetFunctionArguments(RETURN(OBJECT::*)(ARGS...))
         {
             return internal::GetVariables<ARGS...>();
         }
 
         template<typename OBJECT, typename RETURN, typename... ARGS>
-        std::span<Variable> GetFunctionVariables(RETURN(OBJECT::*)(ARGS...) const)
+        std::span<Variable> GetFunctionArguments(RETURN(OBJECT::*)(ARGS...) const)
         {
             return internal::GetVariables<ARGS...>();
         }
@@ -1746,5 +1763,28 @@ class Object
 public:
     virtual ~Object(){}
 };
+
+ETI_TEMPLATE_1_EXTERNAL
+(std::vector, 
+    ETI_PROPERTIES(), 
+    ETI_METHODS
+    (
+        ETI_METHOD(size),
+        ETI_METHOD_OVERLOAD(at, T1& (std::vector<T1>::*)(const std::vector<T1>::size_type)),
+        ETI_METHOD_OVERLOAD(push_back, void (std::vector<T1>::*)(const T1&)),
+        ETI_METHOD_OVERLOAD(erase, std::vector<T1>::iterator (std::vector<T1>::*)(std::vector<T1>::const_iterator ))
+    )
+)
+
+ETI_TEMPLATE_2_EXTERNAL
+(
+    std::map,
+    ETI_PROPERTIES(),
+    ETI_METHODS
+    (
+        ETI_METHOD(size)
+        /*ETI_METHOD(insert)*/
+    )
+)
 
 #endif // #if ETI_COMMON_TYPE
