@@ -308,6 +308,54 @@ namespace eti
             CallStaticFunctionImpl<RETURN, ARGS...>::Call(func, obj, ret, args);
         }
 
+        // static lambda function call
+
+        // static lambda function call with return value
+        template<typename RETURN, typename... ARGS>
+        struct CallStaticLambdaFunctionImpl
+        {
+            static void Call(std::function<RETURN(ARGS...)> func, void*, void* ret, std::span<void*> args)
+            {
+                ETI_ASSERT(ret != nullptr, "call function that return void should have ret arg to nullptr");
+                auto args_tuple = utils::VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
+                std::apply([&](auto... applyArgs) { *((RETURN*)ret) = func(*applyArgs...); }, args_tuple);
+            }
+        };
+
+        // static lambda function call with return ref
+        template<typename RETURN, typename... ARGS>
+        struct CallStaticLambdaFunctionImpl<RETURN&, ARGS...>
+        {
+            static void Call(std::function<RETURN&(ARGS...)> func, void*, void* ret, std::span<void*> args)
+            {
+                ETI_ASSERT(ret != nullptr, "call function that return void should have ret arg to nullptr");
+                auto args_tuple = utils::VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
+                std::apply([&](auto... applyArgs) { (*(void**)ret) = &func(*applyArgs...); }, args_tuple);
+            }
+        };
+
+        // static lambda function call no return
+        template<typename... ARGS>
+        struct CallStaticLambdaFunctionImpl<void, ARGS...>
+        {
+            static void Call(std::function<void(ARGS...)> func, void*, void* ret, std::span<void*> args)
+            {
+                ETI_ASSERT(ret == nullptr, "call function that return void should have ret arg to nullptr");
+                auto args_tuple = VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
+                std::apply([&](auto... applyArgs) { func(*applyArgs...); }, args_tuple);
+            }
+        };
+
+        // static lambda switch
+
+        template<typename RETURN, typename... ARGS>
+        void CallStaticLambda(std::function<RETURN(ARGS...)> func, void* obj, void* ret, std::span<void*> args)
+        {
+            ETI_ASSERT(sizeof...(ARGS) == args.size(), "invalid size of args");
+            ETI_ASSERT(obj == nullptr, "call lamda member function should have obj set to  nullptr");
+            CallStaticLambdaFunctionImpl<RETURN, ARGS...>::Call(func, obj, ret, args);
+        }
+
         // member function call
 
         // member function call with return value
@@ -813,6 +861,20 @@ namespace eti
         ::eti::internal::GetFunctionArguments(&Self::NAME), \
         ::eti::internal::GetAttributes<::eti::Attribute>(__VA_ARGS__))
 
+// lambda method become a static method, useful to add utility function to an existing struct/class
+#define ETI_METHOD_STATIC_LAMBDA(NAME, LAMBDA, ...) \
+    ::eti::internal::MakeMethod(#NAME, \
+        true, \
+        false, \
+        ::eti::TypeOf<Self>(), \
+        [](void* obj, void* _return, std::span<void*> args) \
+        { \
+            ::eti::utils::CallStaticLambda(std::function(LAMBDA), obj, _return, args); \
+        }, \
+        ::eti::internal::GetFunctionReturn(std::function(LAMBDA)), \
+        ::eti::internal::GetFunctionArguments( std::function(LAMBDA)), \
+        ::eti::internal::GetAttributes<::eti::Attribute>(__VA_ARGS__))
+
 #define ETI_METHOD_OVERLOAD(NAME, METHOD_TYPE, ...) \
     ::eti::internal::MakeMethod(#NAME, \
         ::eti::utils::IsMethodStatic<decltype((METHOD_TYPE)&Self::NAME)>, \
@@ -1134,6 +1196,12 @@ namespace eti
             return internal::GetVariable<RETURN>("");
         }
 
+        template<typename RETURN, typename... ARGS>
+        const Variable* GetFunctionReturn( std::function<RETURN(ARGS...)> )
+        {
+            return internal::GetVariable<RETURN>("");
+        }
+
 
         template<typename RETURN, typename... ARGS>
         std::span<Variable> GetFunctionArguments(RETURN(*)(ARGS...))
@@ -1149,6 +1217,12 @@ namespace eti
 
         template<typename OBJECT, typename RETURN, typename... ARGS>
         std::span<Variable> GetFunctionArguments(RETURN(OBJECT::*)(ARGS...) const)
+        {
+            return internal::GetVariables<ARGS...>();
+        }
+
+        template<typename RETURN, typename... ARGS>
+        std::span<Variable> GetFunctionArguments( std::function<RETURN(ARGS...)> )
         {
             return internal::GetVariables<ARGS...>();
         }
@@ -1779,7 +1853,8 @@ ETI_TEMPLATE_2_EXTERNAL
     ETI_PROPERTIES(),
     ETI_METHODS
     (
-        ETI_METHOD(size)
+        ETI_METHOD_STATIC_LAMBDA(GetSize, [](std::map<T1,T2>& map) { return map.size(); }),
+        ETI_METHOD_STATIC_LAMBDA(Insert, [](std::map<T1, T2>& map, const T1& key, const T2& value) { map.insert(std::make_pair(key, value)); })
         /*ETI_METHOD(insert)*/
     )
 )

@@ -1341,12 +1341,17 @@ namespace test_24
 
         const Type& type = TypeOf<std::map<std::string, int>>();
 
-        // size
-        const Method* sizeMethod = type.GetMethod("size");
+        // GetSize
+        const Method* sizeMethod = type.GetMethod("GetSize");
         size_t size;
-        sizeMethod->CallMethod(map, &size);
+        sizeMethod->CallStaticMethod(&size, &map);
         REQUIRE(size == 1);
 
-        map.insert(std::make_pair("3434", 3434));
+        // Insert
+        const Method* insertMethod = type.GetMethod("Insert");
+        std::string key = "3434";
+        int value = 3434;
+        insertMethod->CallStaticMethod(NoReturn, &map, &key, &value);
+        REQUIRE(map["3434"] == 3434);
     }
 }
