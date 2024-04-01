@@ -1151,7 +1151,7 @@ namespace test_23
         Day CurrentDay = Day::Friday;
     };
 
-    TEST_CASE("test_22")
+    TEST_CASE("test_23")
     {
         Time time;
         Time::Day day;
@@ -1162,3 +1162,138 @@ namespace test_23
     }
 }
 ETI_ENUM_IMPL(test_23::Time::Day)
+
+namespace test_24
+{
+    // all kind of return  args
+    struct Foo
+    {
+        ETI_STRUCT_EXT
+        (
+            Foo,
+            ETI_PROPERTIES(),
+            ETI_METHODS
+            (
+                ETI_METHOD(Get), 
+                ETI_METHOD(Set),
+                ETI_METHOD(GetRef),
+                ETI_METHOD(GetPtr),
+                ETI_METHOD(GetValueRef),
+                ETI_METHOD(SetValueRef),
+                ETI_METHOD(GetValuePtr),
+                ETI_METHOD(SetValuePtr),
+                ETI_METHOD(GetValuePtrPtr)
+            )
+        )
+
+        int Get() { return Value; }
+        void Set(int v) { Value = v; }
+
+        int& GetRef() { return Value; }
+        int* GetPtr() { return &Value; }
+
+        void GetValueRef(int& v)
+        {
+            v = Value;
+        }
+
+        void SetValueRef(const int& v) { Value = v; }
+
+        void GetValuePtr(int* v)
+        {
+            *v = Value;
+        }
+        void SetValuePtr(const int* v) { Value = *v; }
+
+        void GetValuePtrPtr(int** v)
+        {
+            *v = &Value;
+        }
+
+        int Value = 1;
+    };
+
+    TEST_CASE("test_24")
+    {
+        {
+            // int Get() { return Value; }
+            Foo foo;
+            int value = 0;
+            const Method* method = TypeOf<Foo>().GetMethod("Get");
+            method->CallMethod(foo, &value);
+            REQUIRE(value == 1);
+        }
+        {
+            // void Set(int v) { Value = v; }
+            Foo foo;
+            const Method* method = TypeOf<Foo>().GetMethod("Set");
+            method->CallMethod(foo, NoReturn, 2);
+            REQUIRE(foo.Value == 2);
+        }
+        {
+            // int& GetRef() { return Value; }
+            Foo foo;
+            int* value = nullptr;
+            const Method* method = TypeOf<Foo>().GetMethod("GetRef");
+            method->CallMethod(foo, &value);
+            REQUIRE(*value == 1);
+            *value = 2;
+            REQUIRE(foo.Value == 2);
+        }
+        {
+            // int& GetPtr() { return Value; }
+            Foo foo;
+            int* value = nullptr;
+            const Method* method = TypeOf<Foo>().GetMethod("GetPtr");
+            method->CallMethod(foo, &value);
+            REQUIRE(*value == 1);
+            *value = 2;
+            REQUIRE(foo.Value == 2);
+        }
+        {
+            //void GetValueRef(int& v)  { v = Value; }
+            Foo foo;
+            int value = 9;
+            const Method* method = TypeOf<Foo>().GetMethod("GetValueRef");
+            method->CallMethod(foo, NoReturn, &value);
+            REQUIRE(value == 1);
+        }
+        {
+            //void SetValueRef(const int& v) { Value = v; }
+            Foo foo;
+            int value = 9;
+            const Method* method = TypeOf<Foo>().GetMethod("SetValueRef");
+            method->CallMethod(foo, NoReturn, &value);
+            REQUIRE(foo.Value == 9);
+        }
+        {
+            //void GetValuePtr(int* v)  { *v = Value; }
+            Foo foo;
+            int value = 9;
+            const Method* method = TypeOf<Foo>().GetMethod("GetValuePtr");
+            method->CallMethod(foo, NoReturn, &value);
+            REQUIRE(value == 1);
+        }
+        {
+            //void SetValuePtr(const int* v) { Value = *v; }
+            Foo foo;
+            int value = 9;
+            const Method* method = TypeOf<Foo>().GetMethod("SetValuePtr");
+            method->CallMethod(foo, NoReturn, &value);
+            REQUIRE(foo.Value == 9);
+        }
+
+        {
+            // void GetValuePtrPtr(int** v)
+
+            Foo foo;
+            int* ptr = nullptr;
+            const Method* method = TypeOf<Foo>().GetMethod("GetValuePtrPtr");
+            method->CallMethod(foo, NoReturn, &ptr);
+            REQUIRE(*ptr == 1);
+            *ptr = 12;
+            REQUIRE(foo.Value == 12);
+
+        }
+    }
+}

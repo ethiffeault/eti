@@ -246,7 +246,7 @@ namespace eti
             if constexpr (std::is_reference_v<T>)
             {
                 using PtrType = std::remove_reference_t<T>*;
-                return *static_cast<PtrType>(ptr);
+                return *static_cast<PtrType>(*(void**)ptr);
             }
             else
             {
@@ -273,6 +273,17 @@ namespace eti
                 ETI_ASSERT(ret != nullptr, "call function that return void should have ret arg to nullptr");
                 auto args_tuple = utils::VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
                 std::apply([&](auto... applyArgs) { *((RETURN*)ret) = func(*applyArgs...); }, args_tuple);
+            }
+        };
+
+        template<typename RETURN, typename... ARGS>
+        struct CallStaticFunctionImpl<RETURN&, ARGS...>
+        {
+            static void Call(RETURN&(*func)(ARGS...), void*, void* ret, std::span<void*> args)
+            {
+                ETI_ASSERT(ret != nullptr, "call function that return void should have ret arg to nullptr");
+                auto args_tuple = utils::VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
+                std::apply([&](auto... applyArgs) { (*(void**)ret) = &func(*applyArgs...); }, args_tuple);
             }
         };
 
@@ -310,6 +321,18 @@ namespace eti
                 std::apply([&](auto... applyArgs) { *((RETURN*)ret) = ((OBJECT*)obj->*func)(*applyArgs...); }, args_tuple);
             }
         };
+
+        template<typename OBJECT, typename RETURN, typename... ARGS>
+        struct CallMemberFunctionImpl<OBJECT, RETURN&, ARGS...>
+        {
+            static void Call(RETURN&(OBJECT::* func)(ARGS...), void* obj, void* ret, std::span<void*> args)
+            {
+                ETI_ASSERT(ret != nullptr, "internal error");
+                auto args_tuple = utils::VoidArgsToTuple<ARGS...>(args, std::index_sequence_for<ARGS...>{});
+                std::apply([&](auto... applyArgs) { (*(void**)ret) = &((OBJECT*)obj->*func)(*applyArgs...); }, args_tuple);
+            }
+        };
+
 
         // member function call void return
         template<typename OBJECT, typename... ARGS>
@@ -1374,8 +1397,14 @@ namespace eti
     template<typename T>
     void ValidateArgument(const Variable& argument, int index)
     {
-        if (argument.Declaration.IsPtr || argument.Declaration.IsRef)
+        if (argument.Declaration.IsPtr)
         {
+            ETI_ASSERT(std::is_pointer_v<T>, "expected pointer argument");
+            ETI_ASSERT(IsA(TypeOf<T>(), argument.Declaration.Type), "argument " << index << " must be of type: " << argument.Declaration.Type.Name << ", not " << TypeOf<T>().Name);
+        }
+        else if ( argument.Declaration.IsRef)
+        {
+            ETI_ASSERT(std::is_pointer_v<T>, "expected pointer as arguments (for ref use pointer)");
             ETI_ASSERT(IsA(TypeOf<T>(), argument.Declaration.Type), "argument " << index << " must be of type: " << argument.Declaration.Type.Name << ", not " << TypeOf<T>().Name);
         }
         else
@@ -1707,8 +1736,8 @@ ETI_POD_EXT(std::uint64_t, u64);
 ETI_POD_EXT(std::float_t, f32);
 ETI_POD_EXT(std::double_t, f64);
 
-ETI_TEMPLATE_1(std::vector)
-ETI_TEMPLATE_2(std::map)
+//ETI_TEMPLATE_1(std::vector)
+//ETI_TEMPLATE_2(std::map)
 
 
 class Object

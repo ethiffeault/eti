@@ -282,7 +282,7 @@ namespace doc_methods
 
             Point result;
 
-            add->CallStaticMethod(&result, p1, p2);
+            add->CallStaticMethod(&result, &p1, &p2);
             std::cout << p1 << " + " << p2 << " = " << result << endl;
         }
     }

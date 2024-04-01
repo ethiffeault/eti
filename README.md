@@ -592,8 +592,8 @@ UnSafeCall is the bare bone way of calling method:
             const Method* add = type.GetMethod("Add");
 
             Point result;
-
-            add->CallStaticMethod(&result, p1, p2);
+            // note: ref should be passed as ptr
+            add->CallStaticMethod(&result, &p1, &p2);
             std::cout << p1 << " + " << p2 << " = " << result << endl;
         }
     }
