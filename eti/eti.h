@@ -542,7 +542,7 @@ namespace eti
         template<typename OBJECT, typename RETURN, typename... ARGS>
         std::span<Variable> GetFunctionArguments(RETURN(OBJECT::* func)(ARGS...) const);
 
-        static Method MakeMethod(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return = nullptr, std::span<const Variable> arguments = {}, std::vector<std::shared_ptr<Attribute>>&& attributes = {});
+        static Method MakeMethod(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return = nullptr, std::span<const Variable> arguments = {}, std::vector<std::shared_ptr<Attribute>>&& attributes = {}, bool isLambda = false);
 
         //
         // Property
@@ -722,6 +722,7 @@ namespace eti
         TypeId MethodId = 0;
         bool IsStatic:1 = false;
         bool IsConst:1 = false;
+        bool IsLambda:1 = false;
         std::function<void(void*, void*, std::span<void*>)> Function;
         const Variable* Return;
         std::span<const Variable> Arguments;
@@ -861,7 +862,19 @@ namespace eti
         ::eti::internal::GetFunctionArguments(&Self::NAME), \
         ::eti::internal::GetAttributes<::eti::Attribute>(__VA_ARGS__))
 
-// lambda method become a static method, useful to add utility function to an existing struct/class
+#define ETI_METHOD_LAMBDA(NAME, LAMBDA, ...) \
+    ::eti::internal::MakeMethod(#NAME, \
+        false, \
+        false, \
+        ::eti::TypeOf<Self>(), \
+        [](void* obj, void* _return, std::span<void*> args) \
+        { \
+            ::eti::utils::CallStaticLambda(std::function(LAMBDA), obj, _return, args); \
+        }, \
+        ::eti::internal::GetFunctionReturn(std::function(LAMBDA)), \
+        ::eti::internal::GetFunctionArguments( std::function(LAMBDA)), \
+        ::eti::internal::GetAttributes<::eti::Attribute>(__VA_ARGS__), true)
+
 #define ETI_METHOD_STATIC_LAMBDA(NAME, LAMBDA, ...) \
     ::eti::internal::MakeMethod(#NAME, \
         true, \
@@ -1248,7 +1261,7 @@ namespace eti
         //
         // Method
 
-        inline Method MakeMethod(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return /*= nullptr*/, std::span<const Variable> arguments /*= {}*/, std::vector<std::shared_ptr<Attribute>>&& attributes /*= {}*/)
+        inline Method MakeMethod(std::string_view name, bool isStatic, bool isConst, const Type& parent, std::function<void(void*, void*, std::span<void*>)>&& function, const Variable* _return /*= nullptr*/, std::span<const Variable> arguments /*= {}*/, std::vector<std::shared_ptr<Attribute>>&& attributes /*= {}*/, bool isLambda /*= false*/)
         {
             return
             {
@@ -1256,6 +1269,7 @@ namespace eti
                 utils::GetStringHash(name),
                 isStatic,
                 isConst,
+                isLambda,
                 function,
                 _return,
                 arguments,
@@ -1525,7 +1539,10 @@ namespace eti
         else
             ETI_ASSERT(Return->Declaration.Type.Kind != Kind::Void, "missing return value on method with return: " << Parent->Name << "::" << Name <<"()");
 
-        ValidateArguments<ARGS...>(Arguments);
+        if (!IsLambda)
+            ValidateArguments<ARGS...>(Arguments);
+        else
+            ValidateArguments<PARENT*, ARGS...>(Arguments);
 
         std::vector<void*> voidArgs = internal::GetVoidPtrFromArgs(args...);
 
@@ -1559,7 +1576,17 @@ namespace eti
         else
             ETI_ASSERT(ret != nullptr, "try to call method with return value, but provided return argument is nullptr");
 
-        this->Function(obj, ret, args);
+        if (IsLambda)
+        {
+            std::vector<void*> objArgs;
+            objArgs.push_back(&obj);
+            objArgs.insert(objArgs.end(), args.begin(), args.end());
+            this->Function(nullptr, ret, objArgs);
+        }
+        else
+        {
+            this->Function(obj, ret, args);
+        }
     }
 
 #pragma endregion
