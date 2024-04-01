@@ -1770,9 +1770,9 @@ ETI_TEMPLATE_1_EXTERNAL
     ETI_METHODS
     (
         ETI_METHOD(size),
-        ETI_METHOD_OVERLOAD(at, T1& (std::vector<T1>::*)(const std::vector<T1>::size_type)),
+        ETI_METHOD_OVERLOAD(at, T1& (std::vector<T1>::*)(const typename std::vector<T1>::size_type)),
         ETI_METHOD_OVERLOAD(push_back, void (std::vector<T1>::*)(const T1&)),
-        ETI_METHOD_OVERLOAD(erase, std::vector<T1>::iterator (std::vector<T1>::*)(std::vector<T1>::const_iterator ))
+        ETI_METHOD_OVERLOAD(erase, typename std::vector<T1>::iterator (std::vector<T1>::*)(typename std::vector<T1>::const_iterator ))
     )
 )
 
