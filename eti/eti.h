@@ -1753,10 +1753,6 @@ ETI_POD_EXT(std::uint64_t, u64);
 ETI_POD_EXT(std::float_t, f32);
 ETI_POD_EXT(std::double_t, f64);
 
-//ETI_TEMPLATE_1(std::vector)
-//ETI_TEMPLATE_2(std::map)
-
-
 class Object
 {
     ETI_BASE(Object)
@@ -1776,6 +1772,7 @@ ETI_TEMPLATE_1_EXTERNAL
     )
 )
 
+// todo: support external method to impl all map functions
 ETI_TEMPLATE_2_EXTERNAL
 (
     std::map,
