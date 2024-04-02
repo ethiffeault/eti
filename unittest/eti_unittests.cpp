@@ -399,22 +399,22 @@ namespace test_08
         REQUIRE(type.Properties[0].Variable.Name == "i");
         REQUIRE(type.Properties[0].Offset == 0);
         REQUIRE(type.Properties[0].Variable.Declaration.IsPtr == false);
-        REQUIRE(type.Properties[0].Variable.Declaration.Type.Id == TypeOf<int>().Id);
+        REQUIRE(type.Properties[0].Variable.Declaration.Type->Id == TypeOf<int>().Id);
 
         REQUIRE(type.Properties[1].Variable.Name == "f");
         REQUIRE(type.Properties[1].Offset == 4);
         REQUIRE(type.Properties[1].Variable.Declaration.IsPtr == false);
-        REQUIRE(type.Properties[1].Variable.Declaration.Type.Id == TypeOf<float>().Id);
+        REQUIRE(type.Properties[1].Variable.Declaration.Type->Id == TypeOf<float>().Id);
 
         REQUIRE(type.Properties[2].Variable.Name == "ptr");
         REQUIRE(type.Properties[2].Offset == 8);
         REQUIRE(type.Properties[2].Variable.Declaration.IsPtr == true);
-        REQUIRE(type.Properties[2].Variable.Declaration.Type.Id == TypeOf<int>().Id);
+        REQUIRE(type.Properties[2].Variable.Declaration.Type->Id == TypeOf<int>().Id);
 
         REQUIRE(type.Properties[3].Variable.Name == "fv");
         REQUIRE(type.Properties[3].Offset == 16);
         REQUIRE(type.Properties[3].Variable.Declaration.IsPtr == false);
-        REQUIRE(type.Properties[3].Variable.Declaration.Type.Id == TypeOf<std::vector<float>>().Id);
+        REQUIRE(type.Properties[3].Variable.Declaration.Type->Id == TypeOf<std::vector<float>>().Id);
     }
 }
 
@@ -458,7 +458,7 @@ namespace test_09
             const Method* method = TypeOf<Foo>().GetMethod("SetI");
             REQUIRE(method != nullptr);
             REQUIRE(method->Arguments.size() == 1);
-            REQUIRE(method->Arguments[0].Declaration.Type == TypeOf<int>());
+            REQUIRE(*method->Arguments[0].Declaration.Type == TypeOf<int>());
             Foo foo;
             std::vector<void*> args;
             int value = 99;
@@ -630,7 +630,7 @@ namespace test_13
         const Type& type = TypeOf<Foo>();
         const Method* method = type.GetMethod("MemberFunction");
         REQUIRE(method != nullptr);
-        REQUIRE(method->Return->Declaration.Type.Kind == Kind::Void);
+        REQUIRE(method->Return->Declaration.Type->Kind == Kind::Void);
     }
 }
 
@@ -1068,7 +1068,7 @@ namespace test_21
 
     void AddValue(const Property* property, void* foo, int value)
     {
-        const Type& propertyType = property->Variable.Declaration.Type;
+        const Type& propertyType = *property->Variable.Declaration.Type;
 
         if (propertyType.Kind == Kind::Template &&
             propertyType.Templates.size() == 1 &&

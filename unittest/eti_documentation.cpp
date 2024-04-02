@@ -219,7 +219,7 @@ namespace doc_properties
 
         cout << "Person::Age member is "
         << GetAccessName(ageProperty->GetAttribute<Accessibility>()->Access)
-        << " of type : " << ageProperty->Variable.Declaration.Type.Name
+        << " of type : " << ageProperty->Variable.Declaration.Type->Name
         << endl;
     }
     // output
