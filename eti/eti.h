@@ -614,6 +614,8 @@ namespace eti
 
     static constexpr void* NoReturn = nullptr;
 
+    static constexpr size_t InvalidIndex = std::numeric_limits<std::size_t>::max();
+
     // user may specialize this per type to have custom name (be careful to hash clash)
     //  ex: use in ETI_POD_EXT macro
     template<typename T>
@@ -797,6 +799,7 @@ namespace eti
         const T* HaveAttribute() const;
 
         // enum
+        std::size_t GetEnumValue(std::string_view enumName) const;
         std::string_view GetEnumValueName(std::size_t enumValue) const;
         TypeId GetEnumValueHash(std::size_t enumValue) const;
     };
@@ -1681,6 +1684,16 @@ namespace eti
     const T* Type::HaveAttribute() const
     {
         return GetAttribute<T>() != nullptr;
+    }
+
+    inline std::size_t Type::GetEnumValue(std::string_view enumName) const
+    {
+        for( size_t i = 0; i < EnumSize; ++i )
+        {
+            if (GetEnumValueName(i) == enumName)
+                return i;
+        }
+        return InvalidIndex;
     }
 
     inline std::string_view Type::GetEnumValueName(size_t enumValue) const
