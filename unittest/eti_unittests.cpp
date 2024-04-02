@@ -1072,7 +1072,7 @@ namespace test_21
 
         if (propertyType.Kind == Kind::Template &&
             propertyType.Templates.size() == 1 &&
-            *propertyType.Templates[0] == TypeOf<int>()  &&
+            *propertyType.Templates[0].Type == TypeOf<int>()  &&
             propertyType == TypeOf<std::vector<int>>())
         {
             // ok to cast here, we validated type
@@ -1324,7 +1324,6 @@ namespace test_24
             *value = 3;
             REQUIRE(vector[1] == 3);
         }
-
 
         {
             std::vector<int> vector;
