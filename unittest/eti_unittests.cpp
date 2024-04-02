@@ -1300,37 +1300,99 @@ namespace test_24
     // vector
     TEST_CASE("test_25")
     {
-        std::vector<int> vector;
-        int i = 2;
-
+        
         const Type& type = TypeOf<std::vector<int>>();
 
-        // push back
-        const Method* pushBackMethod = type.GetMethod("push_back");
-        pushBackMethod->CallMethod(vector,NoReturn, &i);
-        REQUIRE(vector.size() == 1);
-        REQUIRE(vector[0] == 2);
+        {
+            std::vector<int> vector;
+            vector.push_back(1);
+            vector.push_back(2);
+            const Method* m = type.GetMethod("GetSize");
+            size_t size = 0;
+            m->CallMethod(vector, &size);
+            REQUIRE(size == 2);
+        }
 
-        // at (operator[])
-        const Method* atMethod = type.GetMethod("at");
-        int* atValue;
-        atMethod->CallMethod(vector, &atValue, (size_t)0);
-        REQUIRE(*atValue == 2);
-        *atValue = 1;
-        REQUIRE(vector[0] == 1);
+        {
+            std::vector<int> vector;
+            vector.push_back(1);
+            vector.push_back(2);
+            const Method* m = type.GetMethod("GetAt");
+            int* value;
+            m->CallMethod(vector, &value, (size_t)1);
+            REQUIRE(*value == 2);
+            *value = 3;
+            REQUIRE(vector[1] == 3);
+        }
 
-        // size
-        const Method* sizeMethod = type.GetMethod("size");
-        size_t size;
-        sizeMethod->CallMethod(vector, &size);
-        REQUIRE(size == 1);
 
-        // erase
-        const Method* eraseMethod = type.GetMethod("erase");
-        std::vector<int>::iterator itResult;
-        std::vector<int>::const_iterator begin = vector.begin();
-        eraseMethod->CallMethod(vector, &itResult, begin);
-        REQUIRE(vector.size() == 0);
+        {
+            std::vector<int> vector;
+            vector.push_back(1);
+            vector.push_back(2);
+            const Method* m = type.GetMethod("Add");
+            int three = 3;
+            int four = 4;
+            m->CallMethod(vector, NoReturn, &three);
+            m->CallMethod(vector, NoReturn, &four);
+            REQUIRE(vector.size() == 4);
+            REQUIRE(vector[2] == 3);
+            REQUIRE(vector[3] == 4);
+        }
+
+        {
+            std::vector<int> vector;
+            vector.push_back(1);
+            vector.push_back(2);
+            const Method* m = type.GetMethod("AddAt");
+            int three = 3;
+            int four = 4;
+            m->CallMethod(vector, NoReturn, (size_t)0, &three);
+            m->CallMethod(vector, NoReturn, (size_t)1, &four);
+            REQUIRE(vector.size() == 4);
+            REQUIRE(vector[0] == 3);
+            REQUIRE(vector[1] == 4);
+        }
+
+        {
+            std::vector<int> vector;
+            vector.push_back(1);
+            vector.push_back(2);
+            const Method* m = type.GetMethod("Contains");
+            int one = 1;
+            int three = 3;
+            bool result;
+            m->CallMethod(vector, &result, &one);
+            REQUIRE(result == true);
+            m->CallMethod(vector, &result, &three);
+            REQUIRE(result == false);
+        }
+
+        {
+            std::vector<int> vector;
+            vector.push_back(1);
+            vector.push_back(2);
+            const Method* m = type.GetMethod("Remove");
+            int one = 1;
+            int three = 3;
+            bool result;
+            m->CallMethod(vector, &result, &one);
+            REQUIRE(result == true);
+            REQUIRE(vector.size() == 1);
+            m->CallMethod(vector, &result, &three);
+            REQUIRE(result == false);
+        }
+
+        {
+            std::vector<int> vector;
+            vector.push_back(1);
+            vector.push_back(2);
+            const Method* m = type.GetMethod("Clear");
+            m->CallMethod(vector, NoReturn);
+            REQUIRE(vector.size() == 0);
+        }
+
+
     }
 
     // map
@@ -1344,14 +1406,43 @@ namespace test_24
         // GetSize
         const Method* sizeMethod = type.GetMethod("GetSize");
         size_t size;
-        sizeMethod->CallStaticMethod(&size, &map);
+        sizeMethod->CallMethod(map, &size);
         REQUIRE(size == 1);
 
-        // Insert
-        const Method* insertMethod = type.GetMethod("Insert");
-        std::string key = "3434";
-        int value = 3434;
-        insertMethod->CallStaticMethod(NoReturn, &map, &key, &value);
-        REQUIRE(map["3434"] == 3434);
+    }
+}
+
+namespace test_27
+{
+    struct Foo
+    {
+        ETI_STRUCT_EXT
+        (Foo, 
+            ETI_PROPERTIES(), 
+            ETI_METHODS
+            (
+                ETI_METHOD_LAMBDA(Test, [](Foo& foo) { return foo.X; }),
+                ETI_METHOD_LAMBDA(Test2, [](Foo&, int x, int y) { return x + y; })
+            )
+        )
+
+
+            int X = 1;
+    };
+
+    TEST_CASE("test_27")
+    {
+        Foo foo;
+        const Type& type = TypeOf<Foo>();
+        const Method* m = type.GetMethod("Test");
+        int ret = 0;
+        m->CallMethod(foo, &ret);
+        REQUIRE(ret == 1);
+
+        const Method* m2 = type.GetMethod("Test2");
+        ret = 0;
+        m2->CallMethod(foo, &ret, 1,2);
+        REQUIRE(ret == 3);
+
     }
 }

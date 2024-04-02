@@ -1861,28 +1861,92 @@ public:
     virtual ~Object(){}
 };
 
+namespace eti::utils
+{
+    template<typename T>
+    void VectorAddAt( std::vector<T>& vector, size_t index, const T& value)
+    {
+        ETI_ASSERT(index >= 0 && index <= vector.size(), "invalid index");
+        vector.insert(vector.begin() + index, value);
+    }
+
+    template<typename T>
+    bool VectorContains( std::vector<T>& vector, const T& value)
+    {
+        auto it = std::find(vector.begin(), vector.end(), value);
+        return it != vector.end();
+    }
+
+    template<typename T>
+    bool VectorRemove( std::vector<T>& vector, const T& value)
+    {
+        auto it = std::find(vector.begin(), vector.end(), value);
+        if (it != vector.end())
+        {
+            vector.erase(it);
+            return true;
+        }
+        return false;
+    }
+
+    template<typename T>
+    bool VectorRemoveSwap(std::vector<T>& vector, const T& value)
+    {
+        auto it = std::find(vector.begin(), vector.end(), value);
+        if (it != vector.end()) 
+        {
+            if (it != vector.end() - 1)
+                std::swap(*it, vector.back());
+            vector.pop_back();
+            return true;
+        }
+        return false;
+    }
+
+    template<typename T>
+    void VectorRemoveAt( std::vector<T>& vector, size_t index)
+    {
+        ETI_ASSERT(index >= 0 && index < vector.size(), "invalid index");
+        vector.erase(vector.begin() + index);
+    }
+
+    template<typename T>
+    void VectorRemoveAtSwap( std::vector<T>& vector, size_t index)
+    {
+        ETI_ASSERT(index >= 0 && index < vector.size(), "invalid index");
+        std::swap(vector[index], vector.back());
+        vector.pop_back();
+    }
+}
+
+// declare vector type with common methods
 ETI_TEMPLATE_1_EXTERNAL
 (std::vector, 
     ETI_PROPERTIES(), 
     ETI_METHODS
     (
-        ETI_METHOD(size),
-        ETI_METHOD_OVERLOAD(at, T1& (std::vector<T1>::*)(const typename std::vector<T1>::size_type)),
-        ETI_METHOD_OVERLOAD(push_back, void (std::vector<T1>::*)(const T1&)),
-        ETI_METHOD_OVERLOAD(erase, typename std::vector<T1>::iterator (std::vector<T1>::*)(typename std::vector<T1>::const_iterator ))
+        ETI_METHOD_LAMBDA(GetSize, [](const std::vector<T1>& vector) { return vector.size(); }),
+        ETI_METHOD_LAMBDA(GetAt, [](std::vector<T1>& vector, size_t index) -> T1& { return vector[index]; }),
+        ETI_METHOD_LAMBDA(Add, [](std::vector<T1>& vector, const T1& value) { return vector.push_back(value); }),
+        ETI_METHOD_LAMBDA(AddAt, [](std::vector<T1>& vector, size_t index, const T1& value) { eti::utils::VectorAddAt(vector, index, value); }),
+        ETI_METHOD_LAMBDA(Contains, [](std::vector<T1>& vector, const T1& value) { return eti::utils::VectorContains(vector, value); }),
+        ETI_METHOD_LAMBDA(Remove, [](std::vector<T1>& vector, const T1& value) { return eti::utils::VectorRemove(vector, value); }),
+        ETI_METHOD_LAMBDA(RemoveSwap, [](std::vector<T1>& vector, const T1& value) { return eti::utils::VectorRemoveSwap(vector, value); }),
+        ETI_METHOD_LAMBDA(RemoveAt, [](std::vector<T1>& vector, size_t index) { return eti::utils::VectorRemoveAt(vector, index); }),
+        ETI_METHOD_LAMBDA(RemoveAtSwap, [](std::vector<T1>& vector, size_t index) { return eti::utils::VectorRemoveAtSwap(vector, index); }),
+        ETI_METHOD_LAMBDA(Clear, [](std::vector<T1>& vector) { vector.clear(); }),
+        ETI_METHOD_LAMBDA(Reserve, [](std::vector<T1>& vector, size_t size) { vector.reserve(size); })
     )
 )
 
-// todo: support external method to impl all map functions
+// todo: declare map type with common methods
 ETI_TEMPLATE_2_EXTERNAL
 (
     std::map,
     ETI_PROPERTIES(),
     ETI_METHODS
     (
-        ETI_METHOD_STATIC_LAMBDA(GetSize, [](std::map<T1,T2>& map) { return map.size(); }),
-        ETI_METHOD_STATIC_LAMBDA(Insert, [](std::map<T1, T2>& map, const T1& key, const T2& value) { map.insert(std::make_pair(key, value)); })
-        /*ETI_METHOD(insert)*/
+        ETI_METHOD_LAMBDA(GetSize, [](std::map<T1,T2>& map) { return map.size(); })
     )
 )
 
