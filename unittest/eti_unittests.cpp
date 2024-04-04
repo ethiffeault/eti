@@ -548,8 +548,6 @@ namespace test_11
 
     TEST_CASE("test_11")
     {
-        const Type& fooType = TypeOf<Foo>();
-
         {
             ResetCounters();
             REQUIRE(construct == 0);
@@ -557,10 +555,10 @@ namespace test_11
             REQUIRE(moveConstruct == 0);
             REQUIRE(destruct == 0);
 
-            Foo* foo = fooType.New<Foo>();
+            Foo* foo = new Foo;
             REQUIRE(foo != nullptr);
             REQUIRE(foo->Int == 123);
-            fooType.Delete(foo);
+            delete(foo);
 
             REQUIRE(construct == 1);
             REQUIRE(copyConstruct == 0);
@@ -579,8 +577,8 @@ namespace test_11
             {
                 Foo foo1;
                 foo1.Int = 321;
-                Foo* foo2 = fooType.NewCopy<Foo>(foo1);
-                fooType.Delete(foo2);
+                Foo* foo2 = new Foo(foo1);
+                delete(foo2);
             }
 
             REQUIRE(construct == 1);

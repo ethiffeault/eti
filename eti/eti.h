@@ -381,7 +381,6 @@ namespace eti
             }
         };
 
-
         // member function call void return
         template<typename OBJECT, typename... ARGS>
         struct CallMemberFunctionImpl<OBJECT, void, ARGS...>
@@ -462,6 +461,24 @@ namespace eti
 
         template<typename T>
         static constexpr bool HaveGetTypeStatic = HaveGetTypeStaticImpl<T>::value;
+
+        template<typename T>
+        static std::function<void*()> GetNew()
+        {
+            if constexpr (std::is_default_constructible_v<T>)
+                return []() { return new T(); };
+            else
+                return nullptr;
+        }
+
+        template<typename T>
+        static std::function<void(void* /* dst */)> GetDelete()
+        {
+            if constexpr (std::is_default_constructible_v<T>)
+                return [](void* dst) { delete (T*)dst; };
+            else
+                return nullptr;
+        }
 
         template<typename T>
         static std::function<void(void* /* dst */)> GetConstruct()
@@ -754,6 +771,8 @@ namespace eti
         size_t Size = 0;
         size_t Align = 0;
         const Type* Parent = nullptr;
+        std::function<void*()> New;
+        std::function<void(void* /* dst */ )> Delete;
         std::function<void(void* /* dst */)> Construct;
         std::function<void(void* /* src */, void* /* dst */)> CopyConstruct;
         std::function<void(void* /* src */, void* /* dst */)> MoveConstruct;
@@ -769,6 +788,8 @@ namespace eti
         bool operator==(const Type& other) const { return Id == other.Id; }
         bool operator!=(const Type& other) const { return !(*this == other); }
 
+        bool HaveNew() const { return New != nullptr; }
+        bool HaveDelete() const { return Delete != nullptr; }
         bool HaveConstruct() const { return Construct != nullptr; }
         bool HaveCopyConstruct() const { return CopyConstruct != nullptr; }
         bool HaveMove() const { return MoveConstruct != nullptr; }
@@ -778,23 +799,6 @@ namespace eti
         const Property* GetProperty(TypeId propertyId) const;
         const Method* GetMethod(std::string_view name) const;
         const Method* GetMethod(TypeId methodId) const;
-
-        void* Alloc() const;
-        static void Free(void* ptr);
-
-        template<typename T>
-        T* New() const;
-
-        void* UnSafeNew() const;
-
-        template<typename T>
-        T* NewCopy(const T& other) const;
-
-        template<typename T>
-        void Delete(T* ptr) const;
-
-        template<typename FROM, typename TO>
-        void Move(FROM& from, TO& to) const;
 
         template <typename T>
         const T* GetAttribute() const;
@@ -1370,6 +1374,8 @@ namespace eti
                         sizeof(T),
                         alignof(T),
                         parent,
+                        utils::GetNew<T>(),
+                        utils::GetDelete<T>(),
                         utils::GetConstruct<T>(),
                         utils::GetCopyConstruct<T>(),
                         utils::GetMoveConstruct<T>(),
@@ -1396,6 +1402,8 @@ namespace eti
                         nullptr,
                         nullptr,
                         nullptr,
+                        nullptr,
+                        nullptr,
                         {},
                         {},
                         {},
@@ -1414,6 +1422,8 @@ namespace eti
                     Kind::Void,
                     0,
                     0,
+                    nullptr,
+                    nullptr,
                     nullptr,
                     nullptr,
                     nullptr,
@@ -1696,72 +1706,6 @@ namespace eti
         if (Parent != nullptr)
             return Parent->GetMethod(methodId);
         return nullptr;
-    }
-
-    inline void* Type::Alloc() const
-    {
-#ifdef _MSC_VER
-        void* memory = _aligned_malloc(Size, Align);
-#else
-        void* memory = aligned_alloc(Size, Align);
-#endif
-        return memory;
-    }
-
-    inline void Type::Free(void* ptr)
-    {
-        _aligned_free(ptr);
-    }
-
-    template<typename T>
-    T* Type::New() const
-    {
-        ETI_ASSERT(IsA(TypeOf<T>(), *this), "try to call Type::New with non compatible type");
-        ETI_ASSERT(HaveConstruct(), "try to call Type::New on Type without Construct");
-        void* memory = Alloc();
-        ETI_ASSERT(memory, "out of memory on Type::New call");
-        Construct(memory);
-        return static_cast<T*>(memory);
-    }
-
-    inline void* Type::UnSafeNew() const
-    {
-        ETI_ASSERT(HaveConstruct(), "try to call Type::New on Type without Construct");
-        void* memory = Alloc();
-        ETI_ASSERT(memory, "out of memory on Type::New call");
-        Construct(memory);
-        return (memory);
-    }
-
-    template<typename T>
-    T* Type::NewCopy(const T& other) const
-    {
-        ETI_ASSERT(IsA(TypeOf<T>(), *this), "try to call Type::New with non compatible type");
-        ETI_ASSERT(HaveCopyConstruct(), "try to call Type::New on Type without Construct");
-        void* memory = Alloc();
-        ETI_ASSERT(memory, "out of memory on Type::New call");
-        CopyConstruct((void*) & other, memory);
-        return static_cast<T*>(memory);
-    }
-
-    template<typename T>
-    void Type::Delete(T* ptr) const
-    {
-        ETI_ASSERT(IsA(TypeOf<T>(), *this), "try to call Type::Delete with non compatible type");
-        ETI_ASSERT(HaveDestroy(), "try to call Type::Delete on Type without Destroy");
-        // support null delete
-        if (ptr == nullptr)
-            return;
-        Destruct(ptr);
-        Free(ptr);
-    }
-
-    template<typename FROM, typename TO>
-    void Type::Move(FROM& from, TO& to) const
-    {
-        ETI_ASSERT(TypeOf<FROM>().Id == TypeOf<TO>().Id, "Move should be call using same type");
-        ETI_ASSERT(HaveMove(), "try to call Type::Move on Type without MoveConstruct");
-        MoveConstruct(&from, &to);
     }
 
     template <typename T>
