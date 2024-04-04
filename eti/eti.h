@@ -564,10 +564,6 @@ namespace eti
             std::vector<std::shared_ptr<Attribute>> attributes = {},
             std::string_view enumNames = {});
 
-        template<typename... ARGS>
-        std::span<const Type*> GetTypes();
-
-
         template <typename... ARGS>
         std::vector<void*> GetVoidPtrFromArgs(const ARGS&... args);
 
@@ -783,8 +779,13 @@ namespace eti
         const Method* GetMethod(std::string_view name) const;
         const Method* GetMethod(TypeId methodId) const;
 
+        void* Alloc() const;
+        static void Free(void* ptr);
+
         template<typename T>
         T* New() const;
+
+        void* UnSafeNew() const;
 
         template<typename T>
         T* NewCopy(const T& other) const;
@@ -832,6 +833,63 @@ namespace eti
 
     template<typename BASE, typename T>
     const BASE* Cast(const T* instance);
+
+    #if ETI_REPOSITORY
+    class Repository
+    {
+
+    public:
+
+        static Repository& Instance();
+
+        void Register(const Type& type)
+        {
+            ETI_ASSERT(idToTypes.find(type.Id) == idToTypes.end(), "Type already registered to duplicate TypeId");
+            ETI_ASSERT(namesToTypes.find(type.Name) == namesToTypes.end(), "Type already registered to duplicate TypeId");
+
+            idToTypes[type.Id] = &type;
+            namesToTypes[type.Name] = &type;
+        }
+
+        const Type* GetType(TypeId id) const
+        {
+            auto it = idToTypes.find(id);
+            if (it != idToTypes.end())
+                return it->second;
+            return nullptr;
+        }
+
+        const Type* GetType(std::string_view name) const
+        {
+            auto it = namesToTypes.find(name);
+            if (it != namesToTypes.end())
+                return it->second;
+            return nullptr;
+        }
+
+    private:
+
+        std::map<TypeId, const Type*> idToTypes;
+        std::map<std::string_view, const Type*> namesToTypes;
+    };
+
+#define ETI_REPOSITORY_IMPL() \
+    namespace eti \
+    { \
+        Repository& Repository::Instance() \
+        { \
+            static Repository repository; \
+            return repository; \
+        } \
+    } 
+
+#else
+
+#define ETI_REPOSITORY_IMPL()
+
+#endif // #if ETI_REPOSITORY
+
+
 
 #pragma endregion
 
@@ -916,7 +974,7 @@ namespace eti
 
 #define ETI_BASE_EXT(BASE, PROPERTIES, METHODS, ...) \
     public: \
-        virtual const ::eti::Type& GetTypes() const { return GetTypeStatic(); } \
+        virtual const ::eti::Type& GetType() const { return GetTypeStatic(); } \
         ETI_INTERNAL_TYPE_DECL(BASE, nullptr, ::eti::Kind::Class, __VA_ARGS__) \
         ETI_INTERNAL_PROPERTY(PROPERTIES) \
         ETI_INTERNAL_METHOD(METHODS) \
@@ -928,7 +986,7 @@ namespace eti
 #define ETI_CLASS_EXT(CLASS, BASE, PROPERTIES, METHODS, ...) \
     public: \
         using Super = BASE; \
-        const ::eti::Type& GetTypes() const override { return GetTypeStatic(); }\
+        const ::eti::Type& GetType() const override { return GetTypeStatic(); }\
         ETI_INTERNAL_TYPE_DECL(CLASS, &::eti::TypeOf<BASE>(), ::eti::Kind::Class, __VA_ARGS__) \
         ETI_INTERNAL_PROPERTY(PROPERTIES) \
         ETI_INTERNAL_METHOD(METHODS) \
@@ -938,6 +996,7 @@ namespace eti
     ETI_CLASS_EXT(CLASS, BASE, ETI_PROPERTIES(), ETI_METHODS())
 
 #define ETI_STRUCT_EXT(STRUCT, PROPERTIES, METHODS, ...) \
+    public: \
     ETI_INTERNAL_TYPE_DECL(STRUCT, nullptr, ::eti::Kind::Struct, __VA_ARGS__) \
     ETI_INTERNAL_PROPERTY(PROPERTIES) \
     ETI_INTERNAL_METHOD(METHODS)
@@ -1602,25 +1661,56 @@ namespace eti
     inline const Property* Type::GetProperty(std::string_view name) const
     {
         auto it = std::ranges::find_if(Properties, [name](const Property& it) { return it.Variable.Name == name; });
-        return (it != Properties.end()) ? &(*it) : nullptr;
+        if (it != Properties.end())
+            return &*it;
+        if (Parent != nullptr)
+            return Parent->GetProperty(name);
+        return nullptr;
     }
 
     inline const Property* Type::GetProperty(TypeId propertyId) const
     {
         auto it = std::ranges::find_if(Properties, [propertyId](const Property& it) { return it.PropertyId == propertyId; });
-        return (it != Properties.end()) ? &(*it) : nullptr;
+        if (it != Properties.end())
+            return &*it;
+        if (Parent != nullptr)
+            return Parent->GetProperty(propertyId);
+        return nullptr;
     }
 
     inline const Method* Type::GetMethod(std::string_view name) const
     {
         auto it = std::ranges::find_if(Methods, [name](const Method& it) { return it.Name == name; });
-        return (it != Methods.end()) ? &(*it) : nullptr;
+        if (it != Methods.end())
+            return &*it;
+        if (Parent != nullptr)
+            return Parent->GetMethod(name);
+        return nullptr;
     }
 
     inline const Method* Type::GetMethod(TypeId methodId) const
     {
         auto it = std::ranges::find_if(Methods, [methodId](const Method& it) { return it.MethodId == methodId; });
-        return (it != Methods.end()) ? &(*it) : nullptr;
+        if (it != Methods.end())
+            return &*it;
+        if (Parent != nullptr)
+            return Parent->GetMethod(methodId);
+        return nullptr;
+    }
+
+    inline void* Type::Alloc() const
+    {
+#ifdef _MSC_VER
+        void* memory = _aligned_malloc(Size, Align);
+#else
+        void* memory = aligned_alloc(Size, Align);
+#endif
+        return memory;
+    }
+
+    inline void Type::Free(void* ptr)
+    {
+        _aligned_free(ptr);
     }
 
     template<typename T>
@@ -1628,14 +1718,19 @@ namespace eti
     {
         ETI_ASSERT(IsA(TypeOf<T>(), *this), "try to call Type::New with non compatible type");
         ETI_ASSERT(HaveConstruct(), "try to call Type::New on Type without Construct");
-#ifdef _MSC_VER
-        void* memory = _aligned_malloc(Size, Align);
-#else
-        void* memory = aligned_alloc(Size, Align);
-#endif
+        void* memory = Alloc();
         ETI_ASSERT(memory, "out of memory on Type::New call");
         Construct(memory);
         return static_cast<T*>(memory);
+    }
+
+    inline void* Type::UnSafeNew() const
+    {
+        ETI_ASSERT(HaveConstruct(), "try to call Type::New on Type without Construct");
+        void* memory = Alloc();
+        ETI_ASSERT(memory, "out of memory on Type::New call");
+        Construct(memory);
+        return (memory);
     }
 
     template<typename T>
@@ -1643,11 +1738,7 @@ namespace eti
     {
         ETI_ASSERT(IsA(TypeOf<T>(), *this), "try to call Type::New with non compatible type");
         ETI_ASSERT(HaveCopyConstruct(), "try to call Type::New on Type without Construct");
-#ifdef _MSC_VER
-        void* memory = _aligned_malloc(Size, Align);
-#else
-        void* memory = aligned_alloc(Size, Align);
-#endif
+        void* memory = Alloc();
         ETI_ASSERT(memory, "out of memory on Type::New call");
         CopyConstruct((void*) & other, memory);
         return static_cast<T*>(memory);
@@ -1662,6 +1753,7 @@ namespace eti
         if (ptr == nullptr)
             return;
         Destruct(ptr);
+        Free(ptr);
     }
 
     template<typename FROM, typename TO>
@@ -1755,7 +1847,7 @@ namespace eti
     {
         static_assert(utils::IsCompleteType<BASE>, "Base type must be completely declared, missing include ?");
         static_assert(utils::IsCompleteType<T>, "Type must be completely declared, missing include ?");
-        return IsA( instance.GetTypes(), TypeOf<BASE>());
+        return IsA( instance.GetType(), TypeOf<BASE>());
     }
 
     template<typename T, typename BASE>
@@ -1870,15 +1962,27 @@ ETI_POD_EXT(std::uint64_t, u64);
 ETI_POD_EXT(std::float_t, f32);
 ETI_POD_EXT(std::double_t, f64);
 
-class Object
+namespace eti
 {
+    class Object
+    {
     ETI_BASE(Object)
-public:
-    virtual ~Object(){}
-};
+    public:
+        virtual ~Object() {}
+    };
+}
 
 namespace eti::utils
 {
+
+    template<typename T>
+    T& VectorAddDefault(std::vector<T>& vector)
+    {
+        vector.push_back({});
+        T& addedValue = vector[vector.size() - 1];;
+        return addedValue;
+    }
+
     template<typename T>
     void VectorAddAt( std::vector<T>& vector, size_t index, const T& value)
     {
@@ -1944,12 +2048,13 @@ ETI_TEMPLATE_1_EXTERNAL
         ETI_METHOD_LAMBDA(GetSize, [](const std::vector<T1>& vector) { return vector.size(); }),
         ETI_METHOD_LAMBDA(GetAt, [](std::vector<T1>& vector, size_t index) -> T1& { return vector[index]; }),
         ETI_METHOD_LAMBDA(Add, [](std::vector<T1>& vector, const T1& value) { return vector.push_back(value); }),
+        ETI_METHOD_LAMBDA(AddDefault, [](std::vector<T1>& vector) -> T1& { return eti::utils::VectorAddDefault(vector); }),
         ETI_METHOD_LAMBDA(AddAt, [](std::vector<T1>& vector, size_t index, const T1& value) { eti::utils::VectorAddAt(vector, index, value); }),
         ETI_METHOD_LAMBDA(Contains, [](std::vector<T1>& vector, const T1& value) { return eti::utils::VectorContains(vector, value); }),
         ETI_METHOD_LAMBDA(Remove, [](std::vector<T1>& vector, const T1& value) { return eti::utils::VectorRemove(vector, value); }),
         ETI_METHOD_LAMBDA(RemoveSwap, [](std::vector<T1>& vector, const T1& value) { return eti::utils::VectorRemoveSwap(vector, value); }),
-        ETI_METHOD_LAMBDA(RemoveAt, [](std::vector<T1>& vector, size_t index) { return eti::utils::VectorRemoveAt(vector, index); }),
-        ETI_METHOD_LAMBDA(RemoveAtSwap, [](std::vector<T1>& vector, size_t index) { return eti::utils::VectorRemoveAtSwap(vector, index); }),
+        ETI_METHOD_LAMBDA(RemoveAt, [](std::vector<T1>& vector, size_t index) { eti::utils::VectorRemoveAt(vector, index); }),
+        ETI_METHOD_LAMBDA(RemoveAtSwap, [](std::vector<T1>& vector, size_t index) { eti::utils::VectorRemoveAtSwap(vector, index); }),
         ETI_METHOD_LAMBDA(Clear, [](std::vector<T1>& vector) { vector.clear(); }),
         ETI_METHOD_LAMBDA(Reserve, [](std::vector<T1>& vector, size_t size) { vector.reserve(size); })
     )
