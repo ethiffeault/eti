@@ -1395,17 +1395,130 @@ namespace test_24
     // map
     TEST_CASE("test_26")
     {
-        std::map<std::string, int> map;
-        map["1212"] = 1212;
+        {
+            std::map<std::string, int> map;
+            map["1212"] = 1212;
+            const Type& type = TypeOf<std::map<std::string, int>>();
+            const Method* sizeMethod = type.GetMethod("GetSize");
+            size_t size;
+            sizeMethod->CallMethod(map, &size);
+            REQUIRE(size == 1);
+        }
+        {
+            std::map<std::string, int> map;
+            map["1212"] = 1212;
+            const Type& type = TypeOf<std::map<std::string, int>>();
+            const Method* sizeMethod = type.GetMethod("GetValue");
+            int* value;
+            std::string key = "1212";
+            sizeMethod->CallMethod(map, &value, &key);
+            REQUIRE(*value == 1212 );
+            *value = 3434;
+            REQUIRE(map["1212"] == 3434);
+        }
 
-        const Type& type = TypeOf<std::map<std::string, int>>();
+        {
+            std::map<std::string, int> map;
+            map["1212"] = 1212;
+            const Type& type = TypeOf<std::map<std::string, int>>();
+            const Method* sizeMethod = type.GetMethod("Contains");
+            bool result;
+            std::string key = "1212";
+            sizeMethod->CallMethod(map, &result, &key);
+            REQUIRE(result == true );
 
-        // GetSize
-        const Method* sizeMethod = type.GetMethod("GetSize");
-        size_t size;
-        sizeMethod->CallMethod(map, &size);
-        REQUIRE(size == 1);
+            std::string key2 = "3434";
+            sizeMethod->CallMethod(map, &result, &key2);
+            REQUIRE(result == false );
+        }
 
+        {
+            const Type& type = TypeOf<std::map<std::string, int>>();
+            const Method* method = type.GetMethod("Insert");
+
+            std::map<std::string, int> map;
+
+            std::string key = "1212";
+            int value = 1212;
+            int* result;
+            method->CallMethod(map, &result, &key, &value);
+
+            REQUIRE(map.size() == 1);
+            REQUIRE(map.find(key) != map.end());
+            REQUIRE(map[key] == value);
+            
+            *result = 3434;
+            REQUIRE(map[key] == 3434);
+        }
+
+        {
+            const Type& type = TypeOf<std::map<std::string, int>>();
+            const Method* method = type.GetMethod("InsertOrGet");
+
+            std::map<std::string, int> map;
+
+            map["1212"] = 9999;
+
+            std::string key = "1212";
+            int value = 1212;
+            int* result;
+            method->CallMethod(map, &result, &key, &value);
+
+            REQUIRE(map.size() == 1);
+            REQUIRE(map.find(key) != map.end());
+            REQUIRE(map[key] == 9999);
+
+            *result = 3434;
+            REQUIRE(map[key] == 3434);
+        }
+
+        {
+            const Type& type = TypeOf<std::map<std::string, int>>();
+            const Method* method = type.GetMethod("Remove");
+
+            std::map<std::string, int> map;
+
+            map["1212"] = 1212;
+            map["3434"] = 3434;
+
+            bool result;
+            std::string key = "1212";
+            method->CallMethod(map, &result, &key);
+
+            REQUIRE(result == true);
+            REQUIRE(map.size() == 1);
+
+            method->CallMethod(map, &result, &key);
+            REQUIRE(result == false);
+        }
+
+        {
+            const Type& type = TypeOf<std::map<std::string, int>>();
+            const Method* method = type.GetMethod("Clear");
+
+            std::map<std::string, int> map;
+
+            map["1212"] = 1212;
+
+            method->CallMethod(map, NoReturn);
+            REQUIRE(map.size() == 0);
+
+        }
+
+        {
+            const Type& type = TypeOf<std::map<std::string, int>>();
+            const Method* method = type.GetMethod("GetKeys");
+
+            std::map<std::string, int> map;
+            map["1212"] = 1212;
+
+            std::vector<std::string> keys;
+
+            method->CallMethod(map, NoReturn, &keys);
+
+            REQUIRE(keys.size() == 1);
+            REQUIRE(keys[0] == "1212");
+        }
     }
 }
 
@@ -1423,8 +1536,7 @@ namespace test_27
             )
         )
 
-
-            int X = 1;
+        int X = 1;
     };
 
     TEST_CASE("test_27")
