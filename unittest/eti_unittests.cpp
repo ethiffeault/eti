@@ -1068,7 +1068,7 @@ namespace test_21
     {
         const Type& propertyType = *property->Variable.Declaration.Type;
 
-        if (propertyType.Kind == Kind::Template &&
+        if (propertyType.Kind == Kind::Class &&
             propertyType.Templates.size() == 1 &&
             *propertyType.Templates[0].Type == TypeOf<int>()  &&
             propertyType == TypeOf<std::vector<int>>())
