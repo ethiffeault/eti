@@ -27,7 +27,6 @@
 #include <functional>
 #include <string_view>
 #include <span>
-#include <stdlib.h>
 #include <map>
 #include <vector>
 
@@ -692,7 +691,7 @@ namespace eti
     // Declaration, store information about type and it's modifier
     struct Declaration
     {
-        const Type* Type;
+        const Type* Type = nullptr;
         bool IsValue:1 = false;
         bool IsPtr:1 = false;
         bool IsRef:1 = false;     // todo: ref are considered as ptr for now
@@ -2089,6 +2088,10 @@ namespace eti::utils
     }
 }
 
+ETI_BASE_EXTERNAL(std::string, ETI_PROPERTIES(), ETI_METHODS())
+
+ETI_BASE_EXTERNAL(std::wstring, ETI_PROPERTIES(), ETI_METHODS())
+
 // declare vector type with common methods
 ETI_EXTERNAL_BASE_T1
 (std::vector, 
@@ -2110,7 +2113,7 @@ ETI_EXTERNAL_BASE_T1
     )
 )
 
-// todo: declare map type with common methods
+// declare map type with common methods
 ETI_EXTERNAL_BASE_T2
 (
     std::map,
